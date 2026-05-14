@@ -1,0 +1,51 @@
+{
+    "name": "felipillo",
+    "version": "1.0.0",
+    "description": "Premium Spare Parts Management System",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"wait-on http://localhost:5173 && electron .\"",
+        "dev:backend": "cd backend && npm run dev",
+        "dev:frontend": "cd frontend && npm run dev",
+        "build:frontend": "cd frontend && npm run build",
+        "dist": "npm run build:frontend && electron-packager . \"La casa de los retenes S&G\" --platform=win32 --arch=x64 --out=dist_electron --overwrite",
+        "postinstall": "cd backend && npm install && cd ../frontend && npm install"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "concurrently": "^8.2.2",
+        "electron-is-dev": "^2.0.0",
+        "wait-on": "^7.2.0"
+    },
+    "devDependencies": {
+        "electron": "^28.2.0",
+        "electron-builder": "^24.9.1",
+        "electron-packager": "^17.1.2"
+    },
+    "build": {
+        "appId": "com.spareparts.store",
+        "productName": "La casa de los retenes S&G",
+        "directories": {
+            "output": "dist_electron"
+        },
+        "win": {
+            "target": "portable",
+            "icon": "icon.ico"
+        },
+        "files": [
+            "main.js",
+            "backend/**/*",
+            "frontend/dist/**/*",
+            "node_modules/**/*"
+        ],
+        "extraResources": [
+            {
+                "from": "backend/parts.db",
+                "to": "backend/parts.db"
+            }
+        ]
+    }
+}
