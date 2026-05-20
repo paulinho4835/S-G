@@ -80,7 +80,7 @@ export default function PartForm({ onPartAdded }) {
 
                 <div style={{ gridColumn: 'span 2' }}>
                     <label style={{ display: 'block', marginBottom: '.5rem', fontSize: '.9rem' }}>Descripción</label>
-                    <input name="description" value={formData.description} onChange={handleChange} placeholder="Detalles adicionales..." />
+                    <input name="aplicacion" value={formData.aplicacion} onChange={handleChange} placeholder="Detalles adicionales..." />
                 </div>
 
                 <div>

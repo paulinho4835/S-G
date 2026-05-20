@@ -2,6 +2,9 @@ import React, { useEffect, useState, useMemo } from 'react';
 import SalesModal from './SalesModal';
 import EditPartModal from './EditPartModal';
 import AdjustStockModal from './AdjustStockModal';
+import KardexModal from './KardexModal';
+import ConfirmDialog from './ConfirmDialog';
+import { toast } from '../lib/toast';
 
 
 export default function PartList({ refreshTrigger }) {
@@ -11,13 +14,32 @@ export default function PartList({ refreshTrigger }) {
     const [selectedPartForSale, setSelectedPartForSale] = useState(null);
     const [selectedPartForEdit, setSelectedPartForEdit] = useState(null);
     const [selectedPartForRestock, setSelectedPartForRestock] = useState(null);
+    const [selectedPartForKardex, setSelectedPartForKardex] = useState(null);
     const [stockMode, setStockMode] = useState('add'); // 'add' or 'remove'
     const [loading, setLoading] = useState(false);
+        const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm }
     const [recentParts, setRecentParts] = useState(() => {
         const saved = localStorage.getItem('recentParts');
         return saved ? JSON.parse(saved) : [];
     });
+    const [renderLimit, setRenderLimit] = useState(100);
+    const [selectedRowId, setSelectedRowId] = useState(null);
     const internalInputRef = React.useRef(null);
+    const headerRef = React.useRef(null);
+    const [headerHeight, setHeaderHeight] = useState(200);
+
+    useEffect(() => {
+        if (headerRef.current) {
+            const updateHeight = () => {
+                // Add an offset (e.g., 20px) to account for padding/margin if needed
+                setHeaderHeight(headerRef.current.offsetHeight + 10); 
+            };
+            updateHeight();
+            const observer = new ResizeObserver(() => updateHeight());
+            observer.observe(headerRef.current);
+            return () => observer.disconnect();
+        }
+    }, []);
 
     useEffect(() => {
         localStorage.setItem('recentParts', JSON.stringify(recentParts));
@@ -29,11 +51,23 @@ export default function PartList({ refreshTrigger }) {
             if (exists) {
                 return prev.filter(p => p.id !== part.id);
             } else {
-                return [part, ...prev].slice(0, 5); // Keep last 5 for better UX
+                return [part, ...prev].slice(0, 10); // Keep last 10 for better UX
             }
         });
     };
 
+
+    const handleAddToOrder = (part) => {
+        const currentOrders = JSON.parse(localStorage.getItem('pedidos_list') || '[]');
+        const newOrder = {
+            ...part,
+            order_id: Date.now() + Math.random().toString(36).substring(7),
+            order_date: new Date().toISOString()
+        };
+        const updatedOrders = [...currentOrders, newOrder];
+        localStorage.setItem('pedidos_list', JSON.stringify(updatedOrders));
+        toast.success('Agregado a Pedidos correctamente');
+    };
 
     const fetchParts = async () => {
         // Only show loading spinner on initial load or if list is empty
@@ -59,7 +93,7 @@ export default function PartList({ refreshTrigger }) {
     }, [refreshTrigger]);
 
     const filteredParts = useMemo(() => {
-        return parts.filter(part => {
+        const result = parts.filter(part => {
             // 1. General Search Filter
             if (search) {
                 const searchLower = search.toLowerCase();
@@ -67,14 +101,34 @@ export default function PartList({ refreshTrigger }) {
                 const matchesName = (part.name || part.codigo_producto)?.toLowerCase().includes(searchLower);
                 const matchesBrand = part.marca?.toLowerCase().includes(searchLower);
                 const matchesApp = part.aplicacion?.toLowerCase().includes(searchLower);
+                const matchesFamily = part.familia?.toLowerCase().includes(searchLower);
+                const matchesMundial = part.mundial?.toLowerCase().includes(searchLower);
+                
+                const matchesInternal = String(part.internal_measure || '').includes(searchLower);
+                const matchesExternal = String(part.external_measure || '').includes(searchLower);
+                const matchesHeight = String(part.height || '').includes(searchLower);
+                const matchesFlange = String(part.flange_measure || '').includes(searchLower);
+                const matchesTope = String(part.tope || '').includes(searchLower);
 
-                if (!matchesCode && !matchesName && !matchesBrand && !matchesApp) {
+                if (
+                    !matchesCode && 
+                    !matchesName && 
+                    !matchesBrand && 
+                    !matchesApp && 
+                    !matchesFamily && 
+                    !matchesMundial &&
+                    !matchesInternal &&
+                    !matchesExternal &&
+                    !matchesHeight &&
+                    !matchesFlange &&
+                    !matchesTope
+                ) {
                     return false;
                 }
             }
 
             // 2. Specific Dimension Filters
-            const TOLERANCE = 0.5;
+            const TOLERANCE = 0.5; // Tolerancia fija por defecto de 0.5mm para incluir las medidas más cercanas en el catálogo
 
             if (filters.internal) {
                 const val = parseFloat(filters.internal);
@@ -94,23 +148,109 @@ export default function PartList({ refreshTrigger }) {
 
             return true;
         });
+
+        // 3. Smart Sorting: Group by (menor < exacto < mayor) respecto a la medida interna buscada
+        if (filters.internal) {
+            const target = parseFloat(filters.internal);
+
+            // Función que asigna el grupo de ordenamiento:
+            // Grupo 1: Medidas menores al objetivo (van primero, ascendente)
+            // Grupo 2: Medidas exactamente iguales al objetivo (van en el medio)
+            // Grupo 3: Medidas mayores al objetivo (van al final, ascendente)
+            const getGroup = (val) => {
+                if (val < target) return 1;
+                if (val === target) return 2;
+                return 3;
+            };
+
+            return [...result].sort((a, b) => {
+                const valA = parseFloat(a.internal_measure || 0);
+                const valB = parseFloat(b.internal_measure || 0);
+
+                const groupA = getGroup(valA);
+                const groupB = getGroup(valB);
+
+                // Primero ordenar por grupo (1 -> 2 -> 3)
+                if (groupA !== groupB) return groupA - groupB;
+
+                // Dentro del mismo grupo, ordenar por medida interna ascendente
+                if (valA !== valB) return valA - valB;
+
+                // Desempate 1: medida externa ascendente
+                const extA = parseFloat(a.external_measure || 0);
+                const extB = parseFloat(b.external_measure || 0);
+                if (extA !== extB) return extA - extB;
+
+                // Desempate 2: altura ascendente
+                return parseFloat(a.height || 0) - parseFloat(b.height || 0);
+            });
+        }
+
+        // Si hay filtro de medida externa (sin medida interna), aplicar ordenamiento 3-grupos
+        if (filters.external) {
+            const targetExt = parseFloat(filters.external);
+            const getExtGroup = (val) => {
+                if (val < targetExt) return 1;  // Menores primero
+                if (val === targetExt) return 2; // Exactas en medio
+                return 3;                        // Mayores al final
+            };
+            return [...result].sort((a, b) => {
+                const valA = parseFloat(a.external_measure || 0);
+                const valB = parseFloat(b.external_measure || 0);
+                const groupA = getExtGroup(valA);
+                const groupB = getExtGroup(valB);
+                if (groupA !== groupB) return groupA - groupB;
+                if (valA !== valB) return valA - valB;
+                // Desempate: medida interna ascendente, luego altura
+                const intA = parseFloat(a.internal_measure || 0);
+                const intB = parseFloat(b.internal_measure || 0);
+                if (intA !== intB) return intA - intB;
+                return parseFloat(a.height || 0) - parseFloat(b.height || 0);
+            });
+        }
+
+        // Fallback: ordenar por altura si solo hay filtro de altura
+        if (filters.height) {
+            const targetH = parseFloat(filters.height);
+            return [...result].sort((a, b) => {
+                const diffA = Math.abs(parseFloat(a.height || 0) - targetH);
+                const diffB = Math.abs(parseFloat(b.height || 0) - targetH);
+                return diffA - diffB;
+            });
+        }
+
+        return result;
     }, [parts, search, filters]);
 
-    const handleDelete = async (id) => {
-        if (!confirm('¿Estás seguro de que deseas eliminar este producto?')) return;
-        try {
-            const res = await fetch(`/api/parts/${id}`, { method: 'DELETE' });
-            const data = await res.json();
+    useEffect(() => {
+        setRenderLimit(100);
+    }, [search, filters]);
 
-            if (res.ok) {
-                fetchParts();
-            } else {
-                alert(data.error || "No se pudo eliminar el producto.");
+    const paginatedParts = useMemo(() => {
+        const limit = (search || filters.internal || filters.external || filters.height) ? 1000 : renderLimit;
+        return filteredParts.slice(0, limit);
+    }, [filteredParts, renderLimit, search, filters]);
+
+    const handleDelete = (id) => {
+        setConfirmModal({
+            message: '¿Estás seguro de que deseas eliminar este producto? Esta acción no se puede deshacer.',
+            onConfirm: async () => {
+                setConfirmModal(null);
+                try {
+                    const res = await fetch(`/api/parts/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (res.ok) {
+                        fetchParts();
+                        toast.success('Producto eliminado correctamente');
+                    } else {
+                        toast.error(data.error || 'No se pudo eliminar el producto.');
+                    }
+                } catch (error) {
+                    console.error('Error deleting part:', error);
+                    toast.error('Error de conexión al intentar eliminar.');
+                }
             }
-        } catch (error) {
-            console.error('Error deleting part:', error);
-            alert("Error de conexión al intentar eliminar.");
-        }
+        });
     };
 
     const handleConfirmSale = async (saleData) => {
@@ -122,15 +262,15 @@ export default function PartList({ refreshTrigger }) {
             });
             const data = await res.json();
             if (data.message === 'success') {
-                alert("Venta registrada correctamente");
-                setSelectedPartForSale(null); // Close modal
-                fetchParts(); // Refresh stock
+                toast.success('Venta registrada correctamente');
+                setSelectedPartForSale(null);
+                fetchParts();
             } else {
-                alert("Error: " + data.error);
+                toast.error('Error: ' + data.error);
             }
         } catch (error) {
-            console.error("Error selling part:", error);
-            alert("Error al procesar la venta. Verifica que el servidor backend esté corriendo y la base de datos esté actualizada.");
+            console.error('Error selling part:', error);
+            toast.error('Error al procesar la venta. Verifica que el servidor esté corriendo.');
         }
     };
 
@@ -146,15 +286,15 @@ export default function PartList({ refreshTrigger }) {
             });
             const data = await res.json();
             if (data.message === 'success') {
-                alert("Stock actualizado");
+                toast.success('Stock actualizado correctamente');
                 setSelectedPartForRestock(null);
                 fetchParts();
             } else {
-                alert("Error: " + data.error);
+                toast.error('Error: ' + data.error);
             }
         } catch (error) {
-            console.error("Error restocking:", error);
-            alert("Error al actualizar stock");
+            console.error('Error restocking:', error);
+            toast.error('Error al actualizar stock');
         }
     };
 
@@ -198,12 +338,12 @@ export default function PartList({ refreshTrigger }) {
                             Limpiar todos
                         </button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem', maxHeight: '250px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                         {recentParts.map(part => (
                             <div key={`recent-${part.id}`} className="card" style={{ padding: '0.8rem', position: 'relative' }}>
                                 <button
                                     onClick={() => toggleRecent(part)}
-                                    style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', color: '#f87171', padding: '4px' }}
+                                    style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', color: '#f87171', padding: '4px', zIndex: 10 }}
                                     title="Quitar de recientes"
                                 >
                                     ✕
@@ -242,6 +382,13 @@ export default function PartList({ refreshTrigger }) {
                                     >
                                         -
                                     </button>
+                                    <button
+                                        onClick={() => handleAddToOrder(part)}
+                                        style={{ backgroundColor: '#eab308', fontSize: '0.75rem', padding: '4px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
+                                        title="Agregar a Pedidos"
+                                    >
+                                        📦
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -249,75 +396,40 @@ export default function PartList({ refreshTrigger }) {
                 </div>
             )}
 
-            <div className="glass-panel" style={{ marginBottom: '2rem', position: 'sticky', top: 0, zIndex: 100, backgroundColor: 'var(--card-bg)', borderBottom: '1px solid var(--border-color)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-                    <h2 style={{ margin: 0, color: 'var(--text-primary)' }}>📦 Lista de Productos</h2>
-                    <button
-                        onClick={handleDownloadExcel}
-                        className="primary"
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            backgroundColor: '#059669',
-                            padding: '0.6rem 1.2rem',
-                            fontSize: '0.9rem'
-                        }}
-                    >
-                        📥 Descargar Excel
-                    </button>
-                </div>
+            <div ref={headerRef} className="glass-panel" style={{ marginBottom: '1.5rem', position: 'sticky', top: 0, zIndex: 100, backgroundColor: 'var(--card-bg)', borderBottom: '1px solid var(--border-color)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', padding: '0.75rem 1rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+                    
+                    <h2 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.2rem', whiteSpace: 'nowrap' }}>📦 Productos</h2>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Búsqueda General</label>
+                    <div>
                         <input
-                            placeholder="Buscar por código, nombre, marca o aplicación..."
+                            placeholder="Buscar código, marca o aplicación..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            style={{ width: '100%' }}
+                            style={{ width: '280px', padding: '0.5rem', fontSize: '0.85rem', margin: 0 }}
                         />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Medida Interna</label>
-                            <input
-                                ref={internalInputRef}
-                                name="internal"
-                                placeholder="Ej. 25.4"
-                                type="number"
-                                step="0.01"
-                                value={filters.internal}
-                                onChange={handleFilterChange}
-                            />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Medida Externa</label>
-                            <input name="external" placeholder="Ej. 38.07" type="number" step="0.01" value={filters.external} onChange={handleFilterChange} />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>Altura</label>
-                            <input name="height" placeholder="Ej. 7.0" type="number" step="0.01" value={filters.height} onChange={handleFilterChange} />
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                            <button
-                                onClick={handleReset}
-                                className="danger"
-                                style={{
-                                    padding: '0.6rem 1rem',
-                                    fontSize: '0.85rem',
-                                    width: '100%',
-                                    backgroundColor: '#475569', // Discrete darker gray
-                                    border: 'none'
-                                }}
-                            >
-                                🧹 Limpiar Filtros
-                            </button>
-                        </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <input ref={internalInputRef} name="internal" className="filter-input" placeholder="MI" type="number" step="0.01" value={filters.internal} onChange={handleFilterChange} style={{ width: '110px', padding: '0.5rem', fontSize: '0.85rem', margin: 0 }} title="Medida Interna" />
+                        <input name="external" className="filter-input" placeholder="ME" type="number" step="0.01" value={filters.external} onChange={handleFilterChange} style={{ width: '110px', padding: '0.5rem', fontSize: '0.85rem', margin: 0 }} title="Medida Externa" />
+                        <input name="height" className="filter-input" placeholder="ALT" type="number" step="0.01" value={filters.height} onChange={handleFilterChange} style={{ width: '110px', padding: '0.5rem', fontSize: '0.85rem', margin: 0 }} title="Altura" />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <button onClick={handleReset} className="danger" style={{ padding: '0.5rem', fontSize: '1rem', backgroundColor: '#475569', border: 'none', minWidth: '40px', display: 'flex', justifyContent: 'center' }} title="Limpiar Filtros">🧹</button>
+                        <button onClick={handleDownloadExcel} className="primary" style={{ backgroundColor: '#059669', padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Descargar Excel">📥 Excel</button>
                     </div>
                 </div>
             </div>
+
+            {confirmModal && (
+                <ConfirmDialog
+                    message={confirmModal.message}
+                    onConfirm={confirmModal.onConfirm}
+                    onCancel={() => setConfirmModal(null)}
+                />
+            )}
 
             {selectedPartForSale && (
                 <SalesModal
@@ -344,7 +456,14 @@ export default function PartList({ refreshTrigger }) {
                 />
             )}
 
-            <div style={{ overflowX: 'auto' }}>
+            {selectedPartForKardex && (
+                <KardexModal
+                    part={selectedPartForKardex}
+                    onClose={() => setSelectedPartForKardex(null)}
+                />
+            )}
+
+            <div>
                 {loading ? (
                     <div className="loading-container">
                         <div className="spinner"></div>
@@ -352,9 +471,9 @@ export default function PartList({ refreshTrigger }) {
                     </div>
                 ) : (
                     <>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'var(--card-bg)', borderRadius: '8px', overflow: 'hidden' }}>
-                            <thead>
-                                <tr style={{ textAlign: 'left', backgroundColor: 'rgba(255,255,255,0.05)', borderBottom: '1px solid #334155' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'var(--card-bg)', borderRadius: '8px' }}>
+                            <thead style={{ position: 'sticky', top: `${headerHeight}px`, zIndex: 90 }}>
+                                <tr style={{ textAlign: 'left', backgroundColor: '#1e293b', borderBottom: '1px solid #334155', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
                                     <th style={{ padding: '8px' }}>Familia</th>
                                     <th style={{ padding: '8px' }}>Codigo Producto</th>
                                     <th style={{ padding: '8px' }}>Codigo</th>
@@ -374,8 +493,13 @@ export default function PartList({ refreshTrigger }) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredParts.map(part => (
-                                    <tr key={part.id} style={{ borderBottom: '1px solid #334155' }}>
+                                {paginatedParts.map(part => (
+                                    <tr 
+                                        key={part.id} 
+                                        className={selectedRowId === part.id ? 'selected-row' : ''}
+                                        onClick={() => setSelectedRowId(part.id)}
+                                        style={{ borderBottom: '1px solid #334155', cursor: 'pointer', transition: 'all 0.2s' }}
+                                    >
                                         <td style={{ padding: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{part.familia || '-'}</td>
                                         <td
                                             style={{ padding: '8px' }}
@@ -394,9 +518,10 @@ export default function PartList({ refreshTrigger }) {
                                             </div>
                                         </td>
                                         <td
-                                            style={{ padding: '8px', color: 'var(--text-secondary)', fontSize: '0.8rem', cursor: 'pointer' }}
+                                            className="highlight-location"
+                                            style={{ padding: '8px', fontSize: '0.95rem', cursor: 'pointer', textAlign: 'center' }}
                                             onDoubleClick={() => toggleRecent(part)}
-                                            title="Doble clic para anclar a Recientes"
+                                            title="Ubicación. Doble clic para anclar a Recientes"
                                         >
                                             {part.codigo || '-'}
                                         </td>
@@ -469,25 +594,102 @@ export default function PartList({ refreshTrigger }) {
                                                 >
                                                     - Stock
                                                 </button>
+                                                <button
+                                                    onClick={() => setSelectedPartForKardex(part)}
+                                                    style={{ backgroundColor: '#7c3aed', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
+                                                    title="Ver historial completo de movimientos"
+                                                >
+                                                    📋 Kardex
+                                                </button>
+                                                <button
+                                                    onClick={() => handleAddToOrder(part)}
+                                                    style={{ backgroundColor: '#eab308', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
+                                                    title="Agregar a la lista de Pedidos"
+                                                >
+                                                    📦 Pedido
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                        {filteredParts.length > paginatedParts.length && (
+                            <div className="glass-panel" style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginTop: '1.5rem',
+                                padding: '1rem',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '0.5rem',
+                                flexWrap: 'wrap',
+                                gap: '1rem',
+                                backgroundColor: 'rgba(30, 41, 59, 0.5)'
+                            }}>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                    Mostrando <strong>{paginatedParts.length}</strong> de <strong>{filteredParts.length}</strong> productos
+                                </span>
+                                
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                    <button
+                                        onClick={() => setRenderLimit(prev => prev + 100)}
+                                        style={{
+                                            backgroundColor: 'var(--card-bg)',
+                                            color: 'var(--text-primary)',
+                                            padding: '0.5rem 1rem',
+                                            fontSize: '0.85rem',
+                                            cursor: 'pointer',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '0.375rem',
+                                            fontWeight: '500'
+                                        }}
+                                    >
+                                        ⬇️ Mostrar 100 más
+                                    </button>
+                                    <button
+                                        onClick={() => setRenderLimit(filteredParts.length)}
+                                        style={{
+                                            backgroundColor: '#6366f1',
+                                            color: 'white',
+                                            padding: '0.5rem 1rem',
+                                            fontSize: '0.85rem',
+                                            cursor: 'pointer',
+                                            border: 'none',
+                                            borderRadius: '0.375rem',
+                                            fontWeight: 'bold'
+                                        }}
+                                    >
+                                        ✨ Mostrar todos ({filteredParts.length})
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        {filteredParts.length <= paginatedParts.length && filteredParts.length > 0 && (
+                            <div style={{
+                                textAlign: 'center',
+                                marginTop: '1.5rem',
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.9rem'
+                            }}>
+                                Mostrando las <strong>{filteredParts.length}</strong> coincidencias encontradas en la misma página.
+                            </div>
+                        )}
                         {filteredParts.length === 0 && (
                             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed #334155' }}>
                                 <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>No se encontraron repuestos.</p>
                                 <p style={{ marginBottom: '2rem' }}>Si es la primera vez que abres la app, es posible que la base de datos esté vacía.</p>
                                 <button
-                                    onClick={async () => {
-                                        if (confirm("Esto intentará cargar los datos originales. ¿Proceder?")) {
+                                    onClick={() => setConfirmModal({
+                                        message: 'Esto intentará cargar los datos originales desde el paquete de instalación. ¿Proceder?',
+                                        onConfirm: async () => {
+                                            setConfirmModal(null);
                                             const res = await fetch('/api/admin/restore-db', { method: 'POST' });
                                             const data = await res.json();
-                                            alert(data.message || data.error);
-                                            window.location.reload();
+                                            toast.info(data.message || data.error);
+                                            setTimeout(() => window.location.reload(), 2500);
                                         }
-                                    }}
+                                    })}
                                     className="primary"
                                     style={{ backgroundColor: '#6366f1' }}
                                 >

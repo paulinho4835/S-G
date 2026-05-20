@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ConfirmDialog from './ConfirmDialog';
+import { toast } from '../lib/toast';
 
 function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -6,7 +8,9 @@ function SalesHistory() {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [searchCode, setSearchCode] = useState('');
+    const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'QR_ONLY'
     const [loading, setLoading] = useState(false);
+    const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm }
 
     const fetchSales = (forceAll = false) => {
         setLoading(true);
@@ -50,25 +54,38 @@ function SalesHistory() {
     }, []);
 
     const handleReturn = (saleId) => {
-        if (!confirm('¿Seguro que deseas realizar la devolución de esta venta? El stock será restaurado.')) return;
-
-        fetch(`http://localhost:3005/api/sales/${saleId}/return`, {
-            method: 'POST'
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (data.message === 'success') {
-                    alert('Devolución exitosa');
-                    fetchSales(); // Refresh list
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            })
-            .catch(err => alert('Error de conexión'));
+        setConfirmModal({
+            message: '¿Seguro que deseas realizar la devolución de esta venta? El stock será restaurado.',
+            onConfirm: () => {
+                setConfirmModal(null);
+                fetch(`http://localhost:3005/api/sales/${saleId}/return`, { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.message === 'success') {
+                            toast.success('Devolución registrada exitosamente');
+                            fetchSales();
+                        } else {
+                            toast.error('Error: ' + data.error);
+                        }
+                    })
+                    .catch(() => toast.error('Error de conexión'));
+            }
+        });
     };
 
+    const displayedSales = sales.filter(sale => {
+        if (filterType === 'ALL') return true;
+        if (filterType === 'QR') {
+            return sale.invoice_type === 'FACTURA_QR' || sale.invoice_type === 'SIN_FACTURA_QR';
+        }
+        if (filterType === 'NORMAL') {
+            return sale.invoice_type === 'FACTURA' || sale.invoice_type === 'SIN_FACTURA';
+        }
+        return true;
+    });
+
     // Calculate total of displayed sales (excluding refunded)
-    const totalSalesAmount = sales.reduce((sum, sale) => {
+    const totalSalesAmount = displayedSales.reduce((sum, sale) => {
         if (sale.refunded) return sum;
         return sum + (sale.total_price || 0);
     }, 0);
@@ -77,6 +94,7 @@ function SalesHistory() {
         setStartDate('');
         setEndDate('');
         setSearchCode('');
+        setFilterType('ALL');
         // We call fetchSales without arguments, so it defaults to today (no params)
         setLoading(true);
         fetch('http://localhost:3005/api/sales')
@@ -90,8 +108,15 @@ function SalesHistory() {
 
     return (
         <div className="card">
+            {confirmModal && (
+                <ConfirmDialog
+                    message={confirmModal.message}
+                    onConfirm={confirmModal.onConfirm}
+                    onCancel={() => setConfirmModal(null)}
+                />
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <h2 style={{ margin: 0 }}>Historial de Ventas</h2>
+                <h2 style={{ margin: 0 }}>Ventas del dia</h2>
             </div>
 
             <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', alignItems: 'end', flexWrap: 'wrap', backgroundColor: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px' }}>
@@ -113,7 +138,7 @@ function SalesHistory() {
                         style={{ padding: '8px', colorScheme: 'dark' }}
                     />
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: '150px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', minWidth: '150px', width: '200px' }}>
                     <label style={{ fontSize: '0.8rem', color: '#ccc', marginBottom: '4px' }}>Código</label>
                     <input
                         type="text"
@@ -122,6 +147,18 @@ function SalesHistory() {
                         placeholder="Buscar por código..."
                         style={{ width: '100%', padding: '8px' }}
                     />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', minWidth: '160px' }}>
+                    <label style={{ fontSize: '0.8rem', color: '#ccc', marginBottom: '4px' }}>Tipo de Venta</label>
+                    <select
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                        style={{ padding: '8px', colorScheme: 'dark', backgroundColor: '#1e293b', color: 'white', border: '1px solid #555', borderRadius: '4px' }}
+                    >
+                        <option value="ALL">Ventas Total</option>
+                        <option value="NORMAL">Ventas</option>
+                        <option value="QR">Ventas QR</option>
+                    </select>
                 </div>
                 <button onClick={() => fetchSales()} className="primary" style={{ height: '35px', marginBottom: '1px' }}>
                     Filtrar
@@ -145,13 +182,13 @@ function SalesHistory() {
                                 <th style={{ padding: '8px' }}>Cantidad</th>
                                 <th style={{ padding: '8px' }}>Precio Unit.</th>
                                 <th style={{ padding: '8px' }}>Total</th>
-                                <th style={{ padding: '8px' }}>Factura</th>
+                                <th style={{ padding: '8px' }}>Tipo de venta</th>
                                 <th style={{ padding: '8px' }}>Estado</th>
                                 <th style={{ padding: '8px' }}>Acción</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {sales.map(sale => (
+                            {displayedSales.map(sale => (
                                 <tr key={sale.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
                                     <td style={{ padding: '8px' }}>{new Date(sale.sale_date).toLocaleString()}</td>
                                     <td style={{ padding: '8px' }}>{sale.codigo_producto || '-'}</td>
@@ -159,7 +196,11 @@ function SalesHistory() {
                                     <td style={{ padding: '8px' }}>{sale.quantity}</td>
                                     <td style={{ padding: '8px' }}>{sale.unit_price ? `Bs. ${sale.unit_price}` : '-'}</td>
                                     <td style={{ padding: '8px' }}>{sale.total_price ? `Bs. ${sale.total_price}` : '-'}</td>
-                                    <td style={{ padding: '8px' }}>{sale.invoice_type === 'FACTURA' ? 'Con Factura' : 'Sin Factura'}</td>
+                                    <td style={{ padding: '8px' }}>
+                                        {sale.invoice_type === 'FACTURA' ? 'Con Factura' :
+                                         sale.invoice_type === 'FACTURA_QR' ? 'Con Factura QR' :
+                                         sale.invoice_type === 'SIN_FACTURA_QR' ? 'Sin Factura QR' : 'Sin Factura'}
+                                    </td>
                                     <td style={{ padding: '8px' }}>
                                         {sale.refunded ?
                                             <span style={{ color: 'red', fontWeight: 'bold' }}>Devuelto</span> :
@@ -185,7 +226,7 @@ function SalesHistory() {
                                 <td colSpan="3"></td>
                             </tr>
 
-                            {sales.length === 0 && (
+                            {displayedSales.length === 0 && (
                                 <tr>
                                     <td colSpan="8" style={{ padding: '20px', textAlign: 'center' }}>No hay ventas registradas.</td>
                                 </tr>

@@ -16,3 +16,9 @@ build/
 backend/parts.db
 query
 stop
+winCodeSign/
+
+# Archivos grandes - excluidos de Git
+*.rar
+*.exe
+ENTREGA_CLIENTE/

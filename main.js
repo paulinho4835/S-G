@@ -1,14 +1,21 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
+const { fork } = require('child_process');
 const isDev = require('electron-is-dev');
+
+// Desactivar aceleración por hardware para evitar bloqueos del cursor y congelamientos de pantalla en Windows
+app.disableHardwareAcceleration();
 
 let serverProcess;
 let mainWindow;
 
 function startBackend() {
     // Determine path to server
-    const serverPath = path.join(__dirname, 'backend', 'server.js');
+    const isPackaged = !isDev;
+    const serverPath = isPackaged
+        ? path.join(process.resourcesPath, 'backend', 'server.js')
+        : path.join(__dirname, 'backend', 'server.js');
+
     const userDataPath = app.getPath('userData');
     const dbPath = path.join(userDataPath, 'parts.db');
     const uploadsPath = path.join(userDataPath, 'uploads');
@@ -20,7 +27,9 @@ function startBackend() {
     }
 
     // Data Migration: Copy bundled DB to userData if it doesn't exist or is empty
-    const bundledDbPath = path.join(__dirname, 'backend', 'parts.db');
+    const bundledDbPath = isPackaged
+        ? path.join(process.resourcesPath, 'backend', 'parts.db')
+        : path.join(__dirname, 'backend', 'parts.db');
     let shouldCopy = false;
 
     if (!fs.existsSync(dbPath)) {
@@ -51,8 +60,9 @@ function startBackend() {
     console.log('Starting backend at:', serverPath);
 
     // Start backend process using Electron's Node.js
-    serverProcess = spawn(process.execPath, [serverPath], {
-        cwd: path.join(__dirname, 'backend'),
+    serverProcess = fork(serverPath, [], {
+        cwd: process.cwd(),
+        stdio: 'pipe',
         env: {
             ...process.env,
             PORT: 3005,

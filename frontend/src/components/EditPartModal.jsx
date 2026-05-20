@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from '../lib/toast';
 
 export default function EditPartModal({ part, onClose, onConfirm }) {
     const [formData, setFormData] = useState({
@@ -36,11 +37,11 @@ export default function EditPartModal({ part, onClose, onConfirm }) {
                 onConfirm();
                 onClose();
             } else {
-                alert("Error: " + data.error);
+                toast.error("Error: " + data.error);
             }
         } catch (error) {
             console.error("Error updating part:", error);
-            alert("Error al actualizar el producto");
+            toast.error("Error al actualizar el producto");
         } finally {
             setLoading(false);
         }
@@ -53,12 +54,12 @@ export default function EditPartModal({ part, onClose, onConfirm }) {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.8)',
+            backgroundColor: 'rgba(0,0,0,0.85)',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             zIndex: 1000,
-            backdropFilter: 'blur(4px)'
+            /* backdropFilter: 'blur(4px)' - Desactivado para evitar bloqueos del cursor en Electron */
         }}>
             <div className="glass-panel" style={{
                 width: '100%',

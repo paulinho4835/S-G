@@ -1,38 +1,64 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-    LineChart, Line, CartesianGrid, Legend
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
 import './dashboard.css';
 
+const PERIOD_LABELS = {
+    today: 'Hoy',
+    week:  'Esta Semana',
+    month: 'Este Mes',
+};
+
 export default function Dashboard({ onAlertClick }) {
-    const [allParts, setAllParts] = useState([]);
-    const [threshold, setThreshold] = useState(10);
-    const [chartData, setChartData] = useState([]);
-    const [salesChart, setSalesChart] = useState([]);
-    const [totalValue, setTotalValue] = useState(0);
+    const [allParts, setAllParts]         = useState([]);
+    const [threshold, setThreshold]       = useState(5);
+    const [chartData, setChartData]       = useState([]);
+    const [salesChart, setSalesChart]     = useState([]);
+    const [totalValue, setTotalValue]     = useState(0);
     const [salesLoading, setSalesLoading] = useState(true);
 
-    // Derived: lowStock recalculates whenever threshold or parts change
-    const lowStock = allParts.filter(p => (p.stock ?? 0) < threshold);
+    // Sales summary state
+    const [salesPeriod, setSalesPeriod]   = useState('today');
+    const [salesSummary, setSalesSummary] = useState({ total_bs: 0, units_sold: 0, transactions: 0 });
+    const [summaryLoading, setSummaryLoading] = useState(true);
+
+    // Stock detail tab
+    const [stockTab, setStockTab]         = useState('out'); // 'out' | 'low'
+
+    // Derived stock groups
+    const outOfStock = allParts.filter(p => (p.stock ?? 0) === 0);
+    const lowStock   = allParts.filter(p => (p.stock ?? 0) > 0 && (p.stock ?? 0) < threshold);
+
+    // Fetch sales summary whenever period changes
+    const fetchSummary = useCallback((period) => {
+        setSummaryLoading(true);
+        fetch(`/api/sales/summary?period=${period}`)
+            .then(r => r.json())
+            .then(d => {
+                if (d.message === 'success') setSalesSummary(d.data);
+            })
+            .catch(() => {})
+            .finally(() => setSummaryLoading(false));
+    }, []);
 
     useEffect(() => {
-        // Fetch parts
+        fetchSummary(salesPeriod);
+    }, [salesPeriod, fetchSummary]);
+
+    useEffect(() => {
+        // Fetch all parts
         fetch('/api/parts')
             .then(res => res.json())
             .then(payload => {
                 const parts = payload.data || payload;
                 setAllParts(parts);
 
-                // Total inventory value - Sanitized to avoid NaN
                 const value = parts.reduce((sum, p) => {
-                    const price = parseFloat(p.cost_price) || 0;
-                    const stock = parseInt(p.stock) || 0;
-                    return sum + (price * stock);
+                    return sum + (parseFloat(p.cost_price) || 0) * (parseInt(p.stock) || 0);
                 }, 0);
                 setTotalValue(value);
 
-                // Chart by family
                 const groups = {};
                 parts.forEach(p => {
                     const key = (p.familia || p.name || 'Otro').split(' ')[0];
@@ -44,23 +70,19 @@ export default function Dashboard({ onAlertClick }) {
                     .map(([name, total]) => ({ name, total }));
                 setChartData(chartArr);
             })
-            .catch(() => {
-                setAllParts([]);
-                setChartData([]);
-            });
+            .catch(() => { setAllParts([]); setChartData([]); });
 
-        // Fetch sales for top products
-        fetch('/api/sales')
+        // Fetch top sales chart (all time)
+        fetch('/api/sales?startDate=2000-01-01')
             .then(res => res.json())
             .then(payload => {
                 const sales = payload.data || payload;
-                // Aggregate by product name
                 const productSales = {};
                 sales.forEach(s => {
                     const name = s.part_name || s.codigo_producto || `#${s.part_id}`;
                     if (!productSales[name]) productSales[name] = { name, quantity: 0, revenue: 0 };
                     productSales[name].quantity += s.quantity ?? 0;
-                    productSales[name].revenue += s.total_price ?? 0;
+                    productSales[name].revenue  += s.total_price ?? 0;
                 });
                 const topSales = Object.values(productSales)
                     .sort((a, b) => b.quantity - a.quantity)
@@ -68,16 +90,13 @@ export default function Dashboard({ onAlertClick }) {
                 setSalesChart(topSales);
                 setSalesLoading(false);
             })
-            .catch(() => {
-                setSalesChart([]);
-                setSalesLoading(false);
-            });
+            .catch(() => { setSalesChart([]); setSalesLoading(false); });
     }, []);
 
-    const handleExportOrder = (e) => {
+    const handleExportOrder = (e, list) => {
         e.stopPropagation();
         const header = `NUEVO PEDIDO — Stock Crítico (< ${threshold} uds.)\n` + '='.repeat(50) + '\n\n';
-        const lines = lowStock.map(p => [
+        const lines  = list.map(p => [
             `Producto:   ${p.name || p.codigo_producto || ''}`,
             `Código:     ${p.codigo || ''}`,
             `Familia:    ${p.familia || ''}`,
@@ -88,24 +107,51 @@ export default function Dashboard({ onAlertClick }) {
             '-'.repeat(40)
         ].join('\n')).join('\n');
         const blob = new Blob([header + lines], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'nuevo_pedido.txt';
-        a.click();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = 'nuevo_pedido.txt'; a.click();
         URL.revokeObjectURL(url);
     };
 
     const formatCurrency = (val) => {
-        if (!val || isNaN(val)) return "0 Bs.";
+        if (!val || isNaN(val)) return '0 Bs.';
         if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(2)}M Bs.`;
-        if (val >= 1_000) return `${(val / 1_000).toFixed(2)}K Bs.`;
+        if (val >= 1_000)     return `${(val / 1_000).toFixed(2)}K Bs.`;
         return `${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.`;
     };
 
+    const tabBtn = (tab, label, color) => ({
+        padding: '0.3rem 0.85rem',
+        fontSize: '0.82rem',
+        fontWeight: 600,
+        borderRadius: '0.4rem',
+        border: 'none',
+        cursor: 'pointer',
+        transition: 'all 0.18s',
+        background: salesPeriod === tab ? color : 'rgba(255,255,255,0.05)',
+        color: salesPeriod === tab ? '#fff' : '#94a3b8',
+    });
+
+    const stockTabBtn = (tab, active) => ({
+        padding: '0.45rem 1.1rem',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        borderRadius: '0.5rem 0.5rem 0 0',
+        border: 'none',
+        cursor: 'pointer',
+        background: stockTab === tab ? '#1e293b' : 'transparent',
+        color: stockTab === tab ? (tab === 'out' ? '#ef4444' : '#f97316') : '#64748b',
+        borderBottom: stockTab === tab
+            ? `2px solid ${tab === 'out' ? '#ef4444' : '#f97316'}`
+            : '2px solid transparent',
+        transition: 'all 0.18s',
+    });
+
+    const activeStockList = stockTab === 'out' ? outOfStock : lowStock;
+
     return (
         <div>
-            {/* Metric Cards */}
+            {/* ── Metric Cards Row ── */}
             <div className="dashboard-grid">
                 <div className="dashboard-card">
                     <div className="dashboard-card-label">Total Productos</div>
@@ -113,28 +159,39 @@ export default function Dashboard({ onAlertClick }) {
                     <div className="dashboard-card-sub">Registrados en DB</div>
                 </div>
 
-                {/* 1. VALOR TOTAL DEL INVENTARIO */}
                 <div className="dashboard-card value-card">
                     <div className="dashboard-card-label">💰 Valor del Inventario</div>
                     <div className="dashboard-card-value value-highlight">{formatCurrency(totalValue)}</div>
                     <div className="dashboard-card-sub">Basado en Precio de Costo × Stock</div>
                 </div>
 
+                {/* 🔴 Sin Stock */}
+                <div
+                    className="dashboard-card"
+                    style={{ borderColor: 'rgba(239,68,68,0.3)', cursor: 'pointer' }}
+                    onClick={() => { setStockTab('out'); onAlertClick && onAlertClick(); }}
+                >
+                    <div className="dashboard-card-label" style={{ color: '#ef4444' }}>🔴 Sin Stock</div>
+                    <div className="dashboard-card-value" style={{ color: '#ef4444' }}>{outOfStock.length.toLocaleString()}</div>
+                    <div className="dashboard-card-sub">Productos con 0 unidades — Click para ver</div>
+                </div>
+
+                {/* 🟡 Bajo Stock */}
                 <div
                     className="dashboard-card alert-card clickable"
-                    onClick={() => onAlertClick && onAlertClick()}
+                    onClick={() => { setStockTab('low'); onAlertClick && onAlertClick(); }}
                 >
-                    <div className="dashboard-card-label">⚠ Stock Crítico</div>
-                    <div className="dashboard-card-value danger">{lowStock.length}</div>
+                    <div className="dashboard-card-label">🟡 Bajo Stock</div>
+                    <div className="dashboard-card-value" style={{ color: '#f97316' }}>{lowStock.length.toLocaleString()}</div>
                     <div className="dashboard-card-footer">
-                        <span className="dashboard-card-sub danger">Bajo {threshold} uds. — Click para ver</span>
-                        <button className="btn-new-order" onClick={handleExportOrder}>
+                        <span className="dashboard-card-sub">Entre 1 y {threshold - 1} uds. — Click para ver</span>
+                        <button className="btn-new-order" onClick={e => handleExportOrder(e, lowStock)}>
                             Nuevo Pedido
                         </button>
                     </div>
                 </div>
 
-                {/* Threshold control card */}
+                {/* Threshold control */}
                 <div className="dashboard-card">
                     <div className="dashboard-card-label">Umbral Stock Crítico</div>
                     <div className="threshold-control">
@@ -143,19 +200,57 @@ export default function Dashboard({ onAlertClick }) {
                             type="number"
                             className="threshold-input"
                             value={threshold}
-                            min={1}
-                            max={9999}
+                            min={1} max={9999}
                             onChange={e => setThreshold(Math.max(1, parseInt(e.target.value) || 1))}
                         />
                         <span className="threshold-label">uds.</span>
                     </div>
-                    <div className="dashboard-card-sub">{lowStock.length} productos afectados</div>
+                    <div className="dashboard-card-sub">
+                        {outOfStock.length} sin stock · {lowStock.length} bajo stock
+                    </div>
                 </div>
             </div>
 
-            {/* Charts Row */}
+            {/* ── Sales Summary Panel ── */}
+            <div className="dashboard-chart-section" style={{ marginTop: '1.5rem', padding: '1.25rem 1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div className="dashboard-chart-title" style={{ marginBottom: 0 }}>📈 Resumen de Ventas</div>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        {['today', 'week', 'month'].map(p => (
+                            <button key={p} style={tabBtn(p, PERIOD_LABELS[p], '#3b82f6')} onClick={() => setSalesPeriod(p)}>
+                                {PERIOD_LABELS[p]}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {summaryLoading ? (
+                    <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>Cargando...</div>
+                ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                        {[
+                            { label: 'Ingresos Totales', value: formatCurrency(salesSummary.total_bs), color: '#22c55e', icon: '💰' },
+                            { label: 'Unidades Vendidas', value: `${salesSummary.units_sold} uds.`, color: '#38bdf8', icon: '📦' },
+                            { label: 'Transacciones', value: salesSummary.transactions, color: '#a78bfa', icon: '🧾' },
+                        ].map(({ label, value, color, icon }) => (
+                            <div key={label} style={{
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid #334155',
+                                borderRadius: '0.75rem',
+                                padding: '1rem 1.25rem',
+                                textAlign: 'center',
+                            }}>
+                                <div style={{ fontSize: '1.6rem', marginBottom: '0.25rem' }}>{icon}</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color }}>{value}</div>
+                                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.25rem' }}>{label}</div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ── Charts Row ── */}
             <div className="dashboard-charts-row">
-                {/* Stock by Family */}
                 <div className="dashboard-chart-section">
                     <div className="dashboard-chart-title">📦 Stock por Familia</div>
                     <ResponsiveContainer width="100%" height={220}>
@@ -168,14 +263,13 @@ export default function Dashboard({ onAlertClick }) {
                             />
                             <Bar dataKey="total" name="Productos" radius={[4, 4, 0, 0]}>
                                 {chartData.map((_, i) => (
-                                    <Cell key={i} fill={i === 0 ? '#38bdf8' : `rgba(56, 189, 248, ${0.65 - i * 0.08})`} />
+                                    <Cell key={i} fill={i === 0 ? '#38bdf8' : `rgba(56,189,248,${0.65 - i * 0.08})`} />
                                 ))}
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
 
-                {/* 2. TOP VENTAS */}
                 <div className="dashboard-chart-section">
                     <div className="dashboard-chart-title">🏆 Top Productos Vendidos</div>
                     {salesLoading ? (
@@ -184,57 +278,64 @@ export default function Dashboard({ onAlertClick }) {
                         <div className="chart-empty">Sin datos de ventas disponibles</div>
                     ) : (
                         <ResponsiveContainer width="100%" height={220}>
-                            <BarChart
-                                data={salesChart}
-                                layout="vertical"
-                                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-                            >
+                            <BarChart data={salesChart} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                 <XAxis type="number" stroke="#94a3b8" tick={{ fontSize: 11 }} />
-                                <YAxis
-                                    type="category"
-                                    dataKey="name"
-                                    stroke="#94a3b8"
-                                    tick={{ fontSize: 10 }}
-                                    width={110}
-                                    tickFormatter={v => v.length > 14 ? v.slice(0, 14) + '…' : v}
-                                />
+                                <YAxis type="category" dataKey="name" stroke="#94a3b8" tick={{ fontSize: 10 }} width={110}
+                                    tickFormatter={v => v.length > 14 ? v.slice(0, 14) + '…' : v} />
                                 <Tooltip
                                     contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#f8fafc' }}
                                     formatter={(val, name) => name === 'revenue' ? [`${val.toFixed(2)} Bs.`, 'Ingresos'] : [val, 'Unidades']}
                                 />
                                 <Legend wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
                                 <Bar dataKey="quantity" name="Unidades vendidas" fill="#38bdf8" radius={[0, 4, 4, 0]} />
-                                <Bar dataKey="revenue" name="Ingresos (Bs.)" fill="#818cf8" radius={[0, 4, 4, 0]} />
+                                <Bar dataKey="revenue"  name="Ingresos (Bs.)"   fill="#818cf8" radius={[0, 4, 4, 0]} />
                             </BarChart>
                         </ResponsiveContainer>
                     )}
                 </div>
             </div>
 
-            {/* Low Stock Detailed Table */}
+            {/* ── Stock Detail Table with Tabs ── */}
             <div className="dashboard-chart-section" style={{ marginTop: '1.5rem' }}>
-                {lowStock.length > 0 ? (
+                {/* Tab header */}
+                <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid #334155', marginBottom: '1rem', background: 'rgba(0,0,0,0.15)', padding: '0.5rem 1rem 0' }}>
+                    <button style={stockTabBtn('out')} onClick={() => setStockTab('out')}>
+                        🔴 Sin Stock
+                        <span style={{
+                            marginLeft: '6px', background: stockTab === 'out' ? 'rgba(239,68,68,0.2)' : 'rgba(100,116,139,0.2)',
+                            color: stockTab === 'out' ? '#ef4444' : '#64748b',
+                            borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700,
+                            padding: '1px 7px'
+                        }}>{outOfStock.length}</span>
+                    </button>
+                    <button style={stockTabBtn('low')} onClick={() => setStockTab('low')}>
+                        🟡 Bajo Stock (&lt; {threshold} uds.)
+                        <span style={{
+                            marginLeft: '6px', background: stockTab === 'low' ? 'rgba(249,115,22,0.2)' : 'rgba(100,116,139,0.2)',
+                            color: stockTab === 'low' ? '#f97316' : '#64748b',
+                            borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700,
+                            padding: '1px 7px'
+                        }}>{lowStock.length}</span>
+                    </button>
+                </div>
+
+                {activeStockList.length > 0 ? (
                     <div className="dashboard-low-stock-list">
-                        <h4>⚠ Productos en Stock Crítico (stock &lt; {threshold}) — {lowStock.length} ítem(s)</h4>
+                        <h4 style={{ padding: '0 1rem', marginBottom: '0.75rem' }}>
+                            {stockTab === 'out' ? '🔴 Productos Sin Stock (0 unidades)' : `🟡 Productos Bajo Stock (1–${threshold - 1} uds.)`}
+                            {' '}— {activeStockList.length} ítem(s)
+                        </h4>
                         <div className="low-stock-table-wrapper">
                             <table className="low-stock-table">
                                 <thead>
                                     <tr>
-                                        <th>Código</th>
-                                        <th>Producto</th>
-                                        <th>Familia</th>
-                                        <th>Marca</th>
-                                        <th>MI</th>
-                                        <th>ME</th>
-                                        <th>ALT</th>
-                                        <th>PES</th>
-                                        <th>Aplicación</th>
-                                        <th>P. Costo</th>
-                                        <th>Stock</th>
+                                        <th>Código</th><th>Producto</th><th>Familia</th><th>Marca</th>
+                                        <th>MI</th><th>ME</th><th>ALT</th><th>PES</th>
+                                        <th>Aplicación</th><th>P. Costo</th><th>Stock</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {lowStock.map((p, i) => (
+                                    {activeStockList.map((p, i) => (
                                         <tr key={i}>
                                             <td><code>{p.codigo || p.codigo_producto || '—'}</code></td>
                                             <td>{p.name || p.codigo_producto || '—'}</td>
@@ -246,20 +347,28 @@ export default function Dashboard({ onAlertClick }) {
                                             <td>{p.flange_measure ?? '—'}</td>
                                             <td className="td-aplicacion">{p.aplicacion || '—'}</td>
                                             <td>{p.cost_price ? `${p.cost_price}` : '—'}</td>
-                                            <td><span className="low-stock-qty">{p.stock ?? 0}</span></td>
+                                            <td>
+                                                <span className="low-stock-qty" style={{
+                                                    color: (p.stock ?? 0) === 0 ? '#ef4444' : '#f97316'
+                                                }}>{p.stock ?? 0}</span>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
                         <div className="dashboard-export-bar">
-                            <button className="btn-export" onClick={handleExportOrder}>
+                            <button className="btn-export" onClick={e => handleExportOrder(e, activeStockList)}>
                                 📋 Exportar como Nuevo Pedido
                             </button>
                         </div>
                     </div>
                 ) : (
-                    <div className="chart-empty">✅ No hay productos en stock crítico con el umbral actual ({threshold} uds.)</div>
+                    <div className="chart-empty" style={{ padding: '2rem' }}>
+                        {stockTab === 'out'
+                            ? '✅ No hay productos sin stock.'
+                            : `✅ No hay productos con bajo stock (< ${threshold} uds.).`}
+                    </div>
                 )}
             </div>
         </div>

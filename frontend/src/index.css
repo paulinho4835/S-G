@@ -88,8 +88,8 @@ input:focus {
 }
 
 .glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
+  background: rgba(30, 41, 59, 0.96); /* Opaco para mantener una apariencia premium y limpia sin sobrecargar la GPU */
+  /* backdrop-filter: blur(12px); - Desactivado para evitar bloqueos del cursor en Electron/Windows */
   border: 1px solid var(--glass-border);
   border-radius: 1rem;
   padding: 1.5rem;
@@ -255,3 +255,80 @@ input:focus {
 .fab:active {
   transform: scale(0.95);
 }
+
+/* Campos de búsqueda con fondo crema suave solicitados por el cliente */
+.filter-input {
+  background-color: #faf6eb !important; /* Crema suave que no lastima la vista */
+  color: #1e293b !important; /* Texto oscuro suave */
+  border: 2px solid #cbd5e1 !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.filter-input::placeholder {
+  color: #64748b !important; /* Placeholder legible en fondo crema */
+  opacity: 0.8 !important;
+}
+
+.filter-input:focus {
+  background-color: #faf6eb !important;
+  color: #1e293b !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.35) !important;
+  outline: none !important;
+}
+
+/* Botón flotante para volver arriba */
+.scroll-to-top-btn {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem; /* Lado izquierdo para no superponerse con el FAB de búsqueda */
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--card-bg) !important;
+  color: var(--accent-color) !important;
+  border: 2px solid var(--border-color) !important;
+  font-size: 1.2rem !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  cursor: pointer;
+  z-index: 999;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.scroll-to-top-btn:hover {
+  transform: translateY(-3px) scale(1.05) !important;
+  background: var(--border-color) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+.scroll-to-top-btn:active {
+  transform: translateY(0) scale(0.95) !important;
+}
+
+/* Fila seleccionada en la tabla estilo Excel */
+.selected-row {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+}
+
+.selected-row td {
+  border-bottom: 1px solid var(--accent-color) !important;
+  border-top: 1px solid var(--accent-color) !important;
+}
+
+.selected-row td:first-child {
+  border-left: 3px solid var(--accent-color) !important;
+}
+
+/* Columna de ubicación resaltada */
+.highlight-location {
+  color: #00f2fe !important; /* cyan brillante */
+  font-weight: 700 !important;
+  text-shadow: 0 0 8px rgba(0, 242, 254, 0.4);
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+}

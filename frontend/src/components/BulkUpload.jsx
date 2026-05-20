@@ -31,11 +31,15 @@ export default function BulkUpload({ onUploadComplete }) {
             const data = await response.json();
 
             if (data.message === 'success') {
-                setMessage(`✅ ${data.imported} productos importados correctamente`);
+                setMessage(`✅ Carga completada: ${data.imported} nuevos, ${data.updated || 0} actualizados.`);
+                setFile(null);
+                onUploadComplete();
+            } else if (data.message === 'partial_success') {
+                setMessage(`⚠️ Carga parcial: ${data.imported} nuevos, ${data.updated || 0} actualizados. Algunos errores ocurrieron.`);
                 setFile(null);
                 onUploadComplete();
             } else {
-                setMessage(`❌ Error: ${data.error}`);
+                setMessage(`❌ Error: ${data.error || 'Ocurrió un error al procesar'}`);
             }
         } catch (error) {
             setMessage('❌ Error al cargar el archivo');

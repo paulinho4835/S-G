@@ -74,6 +74,25 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 console.error('Error creating sales table: ' + err.message);
             }
         });
+
+        // Create kardex (stock_movements) table
+        db.run(`CREATE TABLE IF NOT EXISTS stock_movements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            part_id INTEGER NOT NULL,
+            type TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            price REAL DEFAULT 0,
+            balance INTEGER NOT NULL,
+            concept TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(part_id) REFERENCES parts(id)
+        )`, (err) => {
+            if (err) {
+                console.error('Error creating stock_movements table: ' + err.message);
+            } else {
+                db.run('CREATE INDEX IF NOT EXISTS idx_movements_part ON stock_movements(part_id)', () => {});
+            }
+        });
     }
 });
 

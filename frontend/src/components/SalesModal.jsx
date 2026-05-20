@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from '../lib/toast';
 
 export default function SalesModal({ part, onClose, onConfirm }) {
     const [quantity, setQuantity] = useState(1);
@@ -7,10 +8,18 @@ export default function SalesModal({ part, onClose, onConfirm }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        const unitPrice = parseFloat(price);
+        const costPrice = parseFloat(part.cost_price || 0);
+        
+        if (unitPrice < costPrice) {
+            toast.error(`¡Error! El precio de venta (Bs. ${unitPrice.toFixed(2)}) no puede ser menor al costo base (Bs. ${costPrice.toFixed(2)})`);
+            return;
+        }
+
         onConfirm({
             part_id: part.id,
             quantity: parseInt(quantity),
-            unit_price: parseFloat(price),
+            unit_price: unitPrice,
             invoice_type: invoiceType
         });
     };
@@ -40,13 +49,18 @@ export default function SalesModal({ part, onClose, onConfirm }) {
                         />
                     </div>
                     <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem' }}>Precio Unitario</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                            <label>Precio Unitario</label>
+                            <span style={{ fontSize: '0.85rem', color: '#f87171', fontWeight: '500' }}>
+                                Costo Base: Bs. {parseFloat(part.cost_price || 0).toFixed(2)}
+                            </span>
+                        </div>
                         <input
                             type="number"
                             step="0.01"
                             value={price}
                             onChange={(e) => setPrice(e.target.value)}
-                            placeholder="0.00 Bs"
+                            placeholder={`Mínimo: Bs. ${parseFloat(part.cost_price || 0).toFixed(2)}`}
                             required
                         />
                     </div>
@@ -64,8 +78,10 @@ export default function SalesModal({ part, onClose, onConfirm }) {
                                 color: 'var(--text-primary)'
                             }}
                         >
-                            <option value="SIN_FACTURA">Sin Factura</option>
-                            <option value="FACTURA">Con Factura</option>
+                            <option value="SIN_FACTURA">Venta sin factura</option>
+                            <option value="SIN_FACTURA_QR">Venta sin factura QR</option>
+                            <option value="FACTURA">Venta con factura</option>
+                            <option value="FACTURA_QR">Venta con factura QR</option>
                         </select>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>

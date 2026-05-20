@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+      
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: #0f172a; font-family: 'Inter', sans-serif; color: #f8fafc;
+      }
+      
+      .scene {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        display: flex; flex-direction: column; justify-content: center;
+        padding: 100px 140px; gap: 40px; z-index: 10;
+        background: #0f172a;
+      }
+      
+      h1 { font-size: 96px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+      .subtitle { font-size: 48px; font-weight: 400; color: #94a3b8; }
+      .accent { color: #3b82f6; }
+      
+      .ui-window {
+        background: #1e293b; border: 1px solid #334155; border-radius: 20px;
+        box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); padding: 50px;
+        flex: 1; display: flex; flex-direction: column; gap: 30px;
+        overflow: hidden;
+      }
+      
+      /* Dashboard */
+      .dash-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+      .dash-card { background: #334155; border-radius: 16px; padding: 30px; }
+      .dash-val { font-size: 64px; font-weight: 800; color: #fff; }
+      .dash-label { font-size: 24px; color: #cbd5e1; }
+      .chart-mock { background: #334155; flex: 1; border-radius: 16px; display: flex; align-items: flex-end; padding: 20px; gap: 20px; }
+      .bar { background: #3b82f6; width: 60px; border-radius: 8px 8px 0 0; }
+      
+      /* Table generic */
+      .table-row { display: flex; gap: 20px; border-bottom: 1px solid #334155; padding: 15px 0; align-items: center; }
+      .table-row div { font-size: 24px; color: #cbd5e1; }
+      .th { font-weight: 700; color: #64748b; font-size: 20px !important; text-transform: uppercase; }
+      .badge { background: rgba(16,185,129,0.2); color: #34d399; padding: 4px 12px; border-radius: 8px; font-weight: 700; }
+      .badge.danger { background: rgba(239,68,68,0.2); color: #f87171; }
+      
+      /* Z-indexes for fading */
+      #scene1 { z-index: 1; }
+      #scene2 { z-index: 2; }
+      #scene3 { z-index: 3; }
+      #scene4 { z-index: 4; }
+      #scene5 { z-index: 5; }
+      #scene6 { z-index: 6; }
+      #scene7 { z-index: 7; background: #020617; align-items: center; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="55" data-width="1920" data-height="1080">
+      
+      <!-- Scene 1: Intro (0-4) -->
+      <div id="scene1" class="scene clip" data-start="0" data-duration="4" data-track-index="1">
+        <h1 class="s1-t" style="font-size: 130px">La casa de los retenes<br><span class="accent">S&G</span></h1>
+        <div class="subtitle s1-s" style="font-size: 60px">Sistema de Gestión Integral</div>
+      </div>
+
+      <!-- Scene 2: Dashboard (3.5-12) -->
+      <div id="scene2" class="scene clip" data-start="3.5" data-duration="8.5" data-track-index="2">
+        <h1 class="s2-t">Dashboard Principal</h1>
+        <div class="subtitle s2-s">Vista global del negocio en tiempo real</div>
+        <div class="ui-window s2-w">
+          <div class="dash-grid">
+            <div class="dash-card s2-c"><div class="dash-val">12,450</div><div class="dash-label">Productos Registrados</div></div>
+            <div class="dash-card s2-c" style="border: 2px solid #3b82f6"><div class="dash-val text-blue">45.2K Bs</div><div class="dash-label">Ventas de Hoy</div></div>
+            <div class="dash-card s2-c"><div class="dash-val" style="color:#f87171">12</div><div class="dash-label">Stock Crítico</div></div>
+          </div>
+          <div class="chart-mock s2-chart">
+            <div class="bar" style="height: 40%"></div><div class="bar" style="height: 60%"></div>
+            <div class="bar" style="height: 30%"></div><div class="bar" style="height: 80%"></div>
+            <div class="bar" style="height: 100%"></div><div class="bar" style="height: 50%"></div>
+            <div class="bar" style="height: 70%"></div><div class="bar" style="height: 90%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 3: Productos (11.5-22) -->
+      <div id="scene3" class="scene clip" data-start="11.5" data-duration="10.5" data-track-index="1">
+        <h1 class="s3-t">Gestión de Productos</h1>
+        <div class="subtitle s3-s">Búsqueda rápida y catálogo detallado</div>
+        <div class="ui-window s3-w">
+          <div style="display:flex; gap:20px" class="s3-search">
+            <div style="background:#334155; padding:15px; border-radius:12px; flex:1; color:#94a3b8; font-size:24px">🔍 Buscar código o aplicación...</div>
+            <div style="background:#334155; padding:15px; border-radius:12px; width:150px; text-align:center">MI: 25.00</div>
+          </div>
+          <div class="table-row"><div class="th" style="width:200px">Código</div><div class="th" style="flex:1">Producto</div><div class="th" style="width:150px">Medidas</div><div class="th" style="width:100px">Stock</div></div>
+          <div class="table-row s3-r"><div style="width:200px;color:#3b82f6;font-weight:700">RET-409</div><div style="flex:1">Retén Cigüeñal Toyota</div><div style="width:150px">25x40x8</div><div style="width:100px"><span class="badge">45</span></div></div>
+          <div class="table-row s3-r"><div style="width:200px;color:#3b82f6;font-weight:700">RET-410</div><div style="flex:1">Retén Levas Nissan</div><div style="width:150px">25x35x7</div><div style="width:100px"><span class="badge danger">0</span></div></div>
+          <div class="table-row s3-r"><div style="width:200px;color:#3b82f6;font-weight:700">RET-411</div><div style="flex:1">Retén Piñón Ford</div><div style="width:150px">25x45x10</div><div style="width:100px"><span class="badge">12</span></div></div>
+        </div>
+      </div>
+
+      <!-- Scene 4: Ventas (21.5-32) -->
+      <div id="scene4" class="scene clip" data-start="21.5" data-duration="10.5" data-track-index="2">
+        <h1 class="s4-t">Ventas y Facturación</h1>
+        <div class="subtitle s4-s">Registro rápido y control de caja</div>
+        <div class="ui-window s4-w" style="flex-direction:row">
+          <div style="flex:2; display:flex; flex-direction:column; gap:20px">
+            <div class="table-row s4-r"><div style="flex:1;font-weight:700">Retén Cigüeñal Toyota</div><div style="width:100px">x2</div><div style="width:150px">140.00 Bs</div></div>
+            <div class="table-row s4-r"><div style="flex:1;font-weight:700">Silicona Gris</div><div style="width:100px">x1</div><div style="width:150px">45.00 Bs</div></div>
+          </div>
+          <div style="flex:1; background:#0f172a; border-radius:16px; padding:30px; display:flex; flex-direction:column; justify-content:space-between" class="s4-panel">
+            <div>
+              <div style="color:#94a3b8; font-size:24px">Total a Cobrar</div>
+              <div style="font-size:64px; font-weight:800; color:#10b981">185.00</div>
+            </div>
+            <div style="background:#3b82f6; color:#fff; padding:20px; text-align:center; border-radius:12px; font-size:24px; font-weight:700">Confirmar Venta</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 5: Kardex (31.5-42) -->
+      <div id="scene5" class="scene clip" data-start="31.5" data-duration="10.5" data-track-index="1">
+        <h1 class="s5-t">Kardex de Movimientos</h1>
+        <div class="subtitle s5-s">Trazabilidad absoluta del inventario</div>
+        <div class="ui-window s5-w">
+          <div style="font-size:32px; font-weight:700; color:#3b82f6">Kardex: RET-409 (Retén Cigüeñal)</div>
+          <div class="table-row"><div class="th" style="width:200px">Fecha</div><div class="th" style="width:150px">Tipo</div><div class="th" style="width:150px">Cant</div><div class="th" style="width:150px">Saldo</div><div class="th" style="flex:1">Nota</div></div>
+          <div class="table-row s5-r"><div style="width:200px">Hoy, 10:30</div><div style="width:150px;color:#f87171">SALIDA</div><div style="width:150px">-2</div><div style="width:150px;font-weight:700">45</div><div style="flex:1">Venta Mostrador</div></div>
+          <div class="table-row s5-r"><div style="width:200px">Ayer, 14:15</div><div style="width:150px;color:#10b981">ENTRADA</div><div style="width:150px">+20</div><div style="width:150px;font-weight:700">47</div><div style="flex:1">Compra Proveedor X</div></div>
+          <div class="table-row s5-r"><div style="width:200px">12/05, 09:00</div><div style="width:150px;color:#f87171">SALIDA</div><div style="width:150px">-5</div><div style="width:150px;font-weight:700">27</div><div style="flex:1">Venta Mayorista</div></div>
+        </div>
+      </div>
+
+      <!-- Scene 6: Pedidos (41.5-50) -->
+      <div id="scene6" class="scene clip" data-start="41.5" data-duration="8.5" data-track-index="2">
+        <h1 class="s6-t">Control de Pedidos</h1>
+        <div class="subtitle s6-s">Planificación de reposición de stock</div>
+        <div class="ui-window s6-w">
+          <div style="display:flex; justify-content:space-between; align-items:center" class="s6-head">
+            <div style="font-size:32px; font-weight:700">Borrador de Pedido #145</div>
+            <div style="background:#eab308; color:#000; padding:10px 20px; border-radius:8px; font-weight:700; font-size:20px">Exportar a Excel</div>
+          </div>
+          <div class="dash-grid">
+            <div class="dash-card s6-c" style="background:rgba(234,179,8,0.1); border:1px solid #eab308">
+              <div style="font-size:24px; color:#eab308; font-weight:700">Retén Levas Nissan</div>
+              <div style="color:#94a3b8; margin-top:10px; font-size:20px">Stock Actual: 0</div>
+            </div>
+            <div class="dash-card s6-c" style="background:rgba(234,179,8,0.1); border:1px solid #eab308">
+              <div style="font-size:24px; color:#eab308; font-weight:700">Silicona Alta Temp</div>
+              <div style="color:#94a3b8; margin-top:10px; font-size:20px">Stock Actual: 2</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 7: Outro (49.5-55) -->
+      <div id="scene7" class="scene clip" data-start="49.5" data-duration="5.5" data-track-index="1">
+        <h1 class="s7-t" style="font-size:120px">Eficiencia y Control.</h1>
+        <div class="subtitle s7-s" style="font-size:72px">Tu negocio, optimizado.</div>
+        <div class="s7-brand" style="margin-top:60px; font-size:48px; font-weight:800; color:#3b82f6; letter-spacing:4px">S&G</div>
+      </div>
+
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Scene 1: Intro (0s)
+      tl.from(".s1-t", { y: 80, opacity: 0, duration: 1.2, ease: "power3.out" }, 0.5);
+      tl.from(".s1-s", { y: 40, opacity: 0, duration: 1.0, ease: "power2.out" }, 0.8);
+
+      // Scene 2: Dashboard (3.5s)
+      tl.from("#scene2", { opacity: 0, duration: 1.0, ease: "none" }, 3.5);
+      tl.from(".s2-t", { x: -60, opacity: 0, duration: 0.8, ease: "power3.out" }, 4.0);
+      tl.from(".s2-s", { x: -40, opacity: 0, duration: 0.8, ease: "power2.out" }, 4.2);
+      tl.from(".s2-w", { y: 100, opacity: 0, duration: 1.0, ease: "power3.out" }, 4.4);
+      tl.from(".s2-c", { scale: 0.8, opacity: 0, duration: 0.6, stagger: 0.15, ease: "back.out(1.2)" }, 4.8);
+      tl.from(".s2-chart .bar", { scaleY: 0, transformOrigin: "bottom", duration: 0.8, stagger: 0.05, ease: "power2.out" }, 5.2);
+
+      // Scene 3: Productos (11.5s)
+      tl.from("#scene3", { opacity: 0, duration: 1.0, ease: "none" }, 11.5);
+      tl.from(".s3-t", { y: -60, opacity: 0, duration: 0.8, ease: "power3.out" }, 12.0);
+      tl.from(".s3-s", { y: -40, opacity: 0, duration: 0.8, ease: "power2.out" }, 12.2);
+      tl.from(".s3-w", { scale: 0.95, opacity: 0, duration: 0.8, ease: "power2.out" }, 12.4);
+      tl.from(".s3-search", { x: -40, opacity: 0, duration: 0.6, ease: "power2.out" }, 12.8);
+      tl.from(".s3-r", { x: -30, opacity: 0, duration: 0.5, stagger: 0.15, ease: "power2.out" }, 13.2);
+
+      // Scene 4: Ventas (21.5s)
+      tl.from("#scene4", { opacity: 0, duration: 1.0, ease: "none" }, 21.5);
+      tl.from(".s4-t", { x: 60, opacity: 0, duration: 0.8, ease: "power3.out" }, 22.0);
+      tl.from(".s4-s", { x: 40, opacity: 0, duration: 0.8, ease: "power2.out" }, 22.2);
+      tl.from(".s4-w", { y: 60, opacity: 0, duration: 0.8, ease: "power2.out" }, 22.4);
+      tl.from(".s4-r", { y: 20, opacity: 0, duration: 0.5, stagger: 0.2, ease: "power2.out" }, 22.8);
+      tl.from(".s4-panel", { scale: 0.9, opacity: 0, duration: 0.8, ease: "back.out(1.2)" }, 23.4);
+
+      // Scene 5: Kardex (31.5s)
+      tl.from("#scene5", { opacity: 0, duration: 1.0, ease: "none" }, 31.5);
+      tl.from(".s5-t", { y: -60, opacity: 0, duration: 0.8, ease: "power3.out" }, 32.0);
+      tl.from(".s5-s", { y: -40, opacity: 0, duration: 0.8, ease: "power2.out" }, 32.2);
+      tl.from(".s5-w", { scale: 0.95, opacity: 0, duration: 0.8, ease: "power2.out" }, 32.4);
+      tl.from(".s5-r", { x: -40, opacity: 0, duration: 0.6, stagger: 0.2, ease: "power2.out" }, 32.8);
+
+      // Scene 6: Pedidos (41.5s)
+      tl.from("#scene6", { opacity: 0, duration: 1.0, ease: "none" }, 41.5);
+      tl.from(".s6-t", { x: -60, opacity: 0, duration: 0.8, ease: "power3.out" }, 42.0);
+      tl.from(".s6-s", { x: -40, opacity: 0, duration: 0.8, ease: "power2.out" }, 42.2);
+      tl.from(".s6-w", { y: 60, opacity: 0, duration: 0.8, ease: "power2.out" }, 42.4);
+      tl.from(".s6-head", { opacity: 0, duration: 0.6, ease: "power2.out" }, 42.8);
+      tl.from(".s6-c", { y: 30, opacity: 0, duration: 0.6, stagger: 0.2, ease: "power2.out" }, 43.2);
+
+      // Scene 7: Outro (49.5s)
+      tl.from("#scene7", { opacity: 0, duration: 1.0, ease: "none" }, 49.5);
+      tl.from(".s7-t", { scale: 1.1, opacity: 0, duration: 1.2, ease: "power3.out" }, 50.2);
+      tl.from(".s7-s", { y: 30, opacity: 0, duration: 1.0, ease: "power2.out" }, 50.8);
+      tl.from(".s7-brand", { y: 20, opacity: 0, duration: 1.0, ease: "power2.out" }, 51.5);
+
+      // Final Fade Out
+      tl.to("#scene7", { opacity: 0, duration: 1.0, ease: "none" }, 54.0);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

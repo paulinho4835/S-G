@@ -10,6 +10,7 @@
         "dev:frontend": "cd frontend && npm run dev",
         "build:frontend": "cd frontend && npm run build",
         "dist": "npm run build:frontend && electron-packager . \"La casa de los retenes S&G\" --platform=win32 --arch=x64 --out=dist_electron --overwrite",
+        "build:electron": "node build.js",
         "postinstall": "cd backend && npm install && cd ../frontend && npm install"
     },
     "keywords": [],
@@ -27,24 +28,39 @@
     },
     "build": {
         "appId": "com.spareparts.store",
-        "productName": "La casa de los retenes S&G",
+        "productName": "La casa de los retenes S y G",
+        "asar": true,
         "directories": {
             "output": "dist_electron"
         },
         "win": {
-            "target": "portable",
-            "icon": "icon.ico"
+            "target": [
+                "nsis",
+                "portable"
+            ],
+            "icon": "icon.png"
+        },
+        "nsis": {
+            "oneClick": true,
+            "perMachine": false,
+            "allowToChangeInstallationDirectory": false,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true,
+            "shortcutName": "La Casa de los Retenes S y G"
         },
         "files": [
             "main.js",
-            "backend/**/*",
             "frontend/dist/**/*",
             "node_modules/**/*"
         ],
         "extraResources": [
             {
-                "from": "backend/parts.db",
-                "to": "backend/parts.db"
+                "from": "backend",
+                "to": "backend"
+            },
+            {
+                "from": "frontend/dist",
+                "to": "frontend/dist"
             }
         ]
     }
