@@ -1172,8 +1172,9 @@ app.post('/api/quotations/:id/cancel', (req, res) => {
     });
 });
 
-// GET — Generar PDF de cotización
+// GET — Generar PDF de cotización (?type=interno para PDF interno con códigos)
 app.get('/api/quotations/:id/pdf', (req, res) => {
+    const interno = req.query.type === 'interno';
     db.get('SELECT * FROM quotations WHERE id = ?', [req.params.id], (err, quote) => {
         if (err || !quote) return res.status(404).json({ error: 'Cotización no encontrada' });
         const sql = `
@@ -1184,20 +1185,22 @@ app.get('/api/quotations/:id/pdf', (req, res) => {
         db.all(sql, [req.params.id], (err, items) => {
             if (err) return res.status(500).json({ error: err.message });
 
+            const suffix = interno ? '-interno' : '-cliente';
             const doc = new PDFDocument({ margin: 50, size: 'A4' });
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `attachment; filename="cotizacion-${req.params.id}.pdf"`);
+            res.setHeader('Content-Disposition', `attachment; filename="cotizacion-${req.params.id}${suffix}.pdf"`);
             doc.pipe(res);
-
-            // Header
-            doc.fontSize(20).font('Helvetica-Bold').text('La casa de los retenes S&G', { align: 'center' });
-            doc.fontSize(13).font('Helvetica').fillColor('#555555').text('COTIZACION', { align: 'center' });
-            doc.fillColor('#000000');
 
             const qDate = new Date(quote.quote_date);
             const validUntil = new Date(qDate);
             validUntil.setDate(validUntil.getDate() + (quote.valid_days || 7));
             const fmtDate = d => d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            // Header
+            doc.fontSize(20).font('Helvetica-Bold').text('La casa de los retenes S&G', { align: 'center' });
+            const subtitle = interno ? 'COTIZACION — USO INTERNO' : 'COTIZACION';
+            doc.fontSize(13).font('Helvetica').fillColor(interno ? '#7c3aed' : '#555555').text(subtitle, { align: 'center' });
+            doc.fillColor('#000000');
 
             doc.moveDown(0.5);
             doc.fontSize(10).text(`Fecha de emision: ${fmtDate(qDate)}`, { align: 'right' });
@@ -1213,41 +1216,74 @@ app.get('/api/quotations/:id/pdf', (req, res) => {
             doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
             doc.moveDown(0.5);
 
-            // Table header
-            const C = { n: 50, cod: 75, desc: 195, cant: 355, precio: 405, sub: 475 };
             doc.fontSize(9).font('Helvetica-Bold').fillColor('#333333');
             const hY = doc.y;
-            doc.text('#', C.n, hY, { width: 20, lineBreak: false });
-            doc.text('Codigo', C.cod, hY, { width: 115, lineBreak: false });
-            doc.text('Descripcion', C.desc, hY, { width: 155, lineBreak: false });
-            doc.text('Cant', C.cant, hY, { width: 45, align: 'right', lineBreak: false });
-            doc.text('P.Unit Bs.', C.precio, hY, { width: 65, align: 'right', lineBreak: false });
-            doc.text('Subtotal Bs.', C.sub, hY, { width: 70, align: 'right' });
 
-            doc.moveDown(0.4);
-            doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#333333').lineWidth(1).stroke();
-            doc.moveDown(0.4);
+            if (interno) {
+                // PDF interno: #, Cod.Producto, Medidas, Referencia, Cant, P.Unit, Subtotal
+                const C = { n: 50, cod: 72, med: 185, ref: 288, cant: 368, precio: 410, sub: 476 };
+                doc.text('#',           C.n,     hY, { width: 18,  lineBreak: false });
+                doc.text('Cod.Producto',C.cod,   hY, { width: 108, lineBreak: false });
+                doc.text('Medidas',     C.med,   hY, { width: 98,  lineBreak: false });
+                doc.text('Referencia',  C.ref,   hY, { width: 75,  lineBreak: false });
+                doc.text('Cant',        C.cant,  hY, { width: 37,  align: 'right', lineBreak: false });
+                doc.text('P.Unit Bs.',  C.precio,hY, { width: 61,  align: 'right', lineBreak: false });
+                doc.text('Subtotal Bs.',C.sub,   hY, { width: 69,  align: 'right' });
 
-            // Table rows
-            doc.font('Helvetica').fontSize(9).fillColor('#000000');
-            items.forEach((item, i) => {
-                const rowY = doc.y;
-                const codigo = item.codigo_producto || item.codigo || '-';
-                const measures = `${item.internal_measure}x${item.external_measure}x${item.height}`;
-                const desc = item.name ? `${item.name} (${measures})` : measures;
-                const sub = (item.quantity * item.unit_price).toFixed(2);
-                doc.text(String(i + 1), C.n, rowY, { width: 20, lineBreak: false });
-                doc.text(codigo, C.cod, rowY, { width: 115, lineBreak: false });
-                doc.text(desc, C.desc, rowY, { width: 155, lineBreak: false });
-                doc.text(String(item.quantity), C.cant, rowY, { width: 45, align: 'right', lineBreak: false });
-                doc.text(item.unit_price.toFixed(2), C.precio, rowY, { width: 65, align: 'right', lineBreak: false });
-                doc.text(sub, C.sub, rowY, { width: 70, align: 'right' });
                 doc.moveDown(0.4);
-                if (i % 2 === 1) {
-                    doc.rect(50, rowY - 3, 495, doc.y - rowY + 3).fillColor('#f8f8f8').fill();
-                    doc.fillColor('#000000');
-                }
-            });
+                doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#333333').lineWidth(1).stroke();
+                doc.moveDown(0.4);
+
+                doc.font('Helvetica').fontSize(9).fillColor('#000000');
+                items.forEach((item, i) => {
+                    const rowY = doc.y;
+                    const measures = `${item.internal_measure}x${item.external_measure}x${item.height}`;
+                    const codProd = item.codigo_producto || '-';
+                    const referencia = item.codigo || '-';
+                    const sub = (item.quantity * item.unit_price).toFixed(2);
+                    doc.text(String(i + 1), C.n,     rowY, { width: 18,  lineBreak: false });
+                    doc.text(codProd,       C.cod,   rowY, { width: 108, lineBreak: false });
+                    doc.text(measures,      C.med,   rowY, { width: 98,  lineBreak: false });
+                    doc.text(referencia,    C.ref,   rowY, { width: 75,  lineBreak: false });
+                    doc.text(String(item.quantity), C.cant, rowY, { width: 37, align: 'right', lineBreak: false });
+                    doc.text(item.unit_price.toFixed(2), C.precio, rowY, { width: 61, align: 'right', lineBreak: false });
+                    doc.text(sub,           C.sub,   rowY, { width: 69,  align: 'right' });
+                    doc.moveDown(0.4);
+                    if (i % 2 === 1) {
+                        doc.rect(50, rowY - 3, 495, doc.y - rowY + 3).fillColor('#f3f0ff').fill();
+                        doc.fillColor('#000000');
+                    }
+                });
+            } else {
+                // PDF cliente: #, Medidas (MI x ME x ALT), Cant, P.Unit, Subtotal — sin códigos
+                const C = { n: 50, med: 75, cant: 335, precio: 380, sub: 472 };
+                doc.text('#',           C.n,     hY, { width: 20,  lineBreak: false });
+                doc.text('Medidas (MI x ME x ALT)', C.med, hY, { width: 255, lineBreak: false });
+                doc.text('Cant',        C.cant,  hY, { width: 40,  align: 'right', lineBreak: false });
+                doc.text('P.Unit Bs.',  C.precio,hY, { width: 87,  align: 'right', lineBreak: false });
+                doc.text('Subtotal Bs.',C.sub,   hY, { width: 73,  align: 'right' });
+
+                doc.moveDown(0.4);
+                doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#333333').lineWidth(1).stroke();
+                doc.moveDown(0.4);
+
+                doc.font('Helvetica').fontSize(9).fillColor('#000000');
+                items.forEach((item, i) => {
+                    const rowY = doc.y;
+                    const measures = `${item.internal_measure} x ${item.external_measure} x ${item.height}`;
+                    const sub = (item.quantity * item.unit_price).toFixed(2);
+                    doc.text(String(i + 1), C.n,     rowY, { width: 20,  lineBreak: false });
+                    doc.text(measures,      C.med,   rowY, { width: 255, lineBreak: false });
+                    doc.text(String(item.quantity), C.cant, rowY, { width: 40, align: 'right', lineBreak: false });
+                    doc.text(item.unit_price.toFixed(2), C.precio, rowY, { width: 87, align: 'right', lineBreak: false });
+                    doc.text(sub,           C.sub,   rowY, { width: 73,  align: 'right' });
+                    doc.moveDown(0.4);
+                    if (i % 2 === 1) {
+                        doc.rect(50, rowY - 3, 495, doc.y - rowY + 3).fillColor('#f8f8f8').fill();
+                        doc.fillColor('#000000');
+                    }
+                });
+            }
 
             doc.moveDown(0.5);
             doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#333333').lineWidth(1).stroke();

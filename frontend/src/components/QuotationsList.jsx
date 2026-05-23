@@ -4,19 +4,23 @@ import { toast } from '../lib/toast';
 const STATUS_LABEL = { pending: 'Pendiente', confirmed: 'Confirmada', cancelled: 'Cancelada' };
 const STATUS_COLOR = { pending: '#f59e0b', confirmed: '#10b981', cancelled: '#ef4444' };
 
-async function downloadPDF(id) {
+async function downloadPDF(id, tipo = 'cliente') {
     try {
-        const res = await fetch(`/api/quotations/${id}/pdf`);
+        const url = tipo === 'interno'
+            ? `/api/quotations/${id}/pdf?type=interno`
+            : `/api/quotations/${id}/pdf`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error('Error generando PDF');
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
+        const objUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `cotizacion-${String(id).padStart(4, '0')}.pdf`;
+        a.href = objUrl;
+        const suffix = tipo === 'interno' ? '-interno' : '-cliente';
+        a.download = `cotizacion-${String(id).padStart(4, '0')}${suffix}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(objUrl);
     } catch (err) {
         toast.error('Error descargando PDF: ' + err.message);
     }
@@ -184,10 +188,16 @@ export default function QuotationsList() {
                                     )}
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                         <button
-                                            onClick={() => downloadPDF(q.id)}
+                                            onClick={() => downloadPDF(q.id, 'cliente')}
                                             style={{ padding: '6px 14px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 'bold' }}
                                         >
-                                            📄 Ver / Descargar PDF
+                                            📄 PDF Cliente
+                                        </button>
+                                        <button
+                                            onClick={() => downloadPDF(q.id, 'interno')}
+                                            style={{ padding: '6px 14px', backgroundColor: '#7c3aed', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 'bold' }}
+                                        >
+                                            🔧 PDF Interno
                                         </button>
                                         {q.status === 'pending' && (
                                             <>

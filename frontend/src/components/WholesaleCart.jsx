@@ -46,18 +46,22 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
             });
             const data = await res.json();
             if (data.message === 'success') {
-                toast.success(`📋 Cotización #${data.data.id} guardada — descargando PDF...`);
-                // Download PDF
-                const pdfRes = await fetch(`/api/quotations/${data.data.id}/pdf`);
-                const blob = await pdfRes.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `cotizacion-${String(data.data.id).padStart(4, '0')}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                toast.success(`📋 Cotización #${data.data.id} guardada — descargando PDFs...`);
+                const dlPdf = async (url, filename) => {
+                    const r = await fetch(url);
+                    const blob = await r.blob();
+                    const objUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = objUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(objUrl);
+                };
+                const qId = String(data.data.id).padStart(4, '0');
+                await dlPdf(`/api/quotations/${data.data.id}/pdf`, `cotizacion-${qId}-cliente.pdf`);
+                await dlPdf(`/api/quotations/${data.data.id}/pdf?type=interno`, `cotizacion-${qId}-interno.pdf`);
                 onClearCart();
                 setCliente('');
                 setNotes('');
