@@ -7,7 +7,7 @@ import ConfirmDialog from './ConfirmDialog';
 import { toast } from '../lib/toast';
 
 
-export default function PartList({ refreshTrigger }) {
+export default function PartList({ refreshTrigger, onAddToCart }) {
     const [parts, setParts] = useState([]);
     const [search, setSearch] = useState('');
     const [filters, setFilters] = useState({ internal: '', external: '', height: '' });
@@ -356,6 +356,16 @@ export default function PartList({ refreshTrigger }) {
                                     <span style={{ fontSize: '0.85rem', color: (part.stock || 0) > 0 ? '#34d399' : '#f87171' }}>Stock: {part.stock || 0}</span>
                                 </div>
                                 <div style={{ display: 'flex', gap: '4px', marginTop: '10px' }}>
+                                    {onAddToCart && (
+                                        <button
+                                            onClick={() => onAddToCart(part)}
+                                            disabled={(part.stock ?? 0) <= 0}
+                                            style={{ backgroundColor: '#f59e0b', fontSize: '0.75rem', padding: '4px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#0f172a', fontWeight: 'bold' }}
+                                            title="Agregar al Carrito Mayorista"
+                                        >
+                                            + Mayor
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => setSelectedPartForSale(part)}
                                         disabled={(part.stock ?? 0) <= 0}
@@ -554,6 +564,16 @@ export default function PartList({ refreshTrigger }) {
                                         </td>
                                         <td style={{ padding: '8px', minWidth: '320px' }}>
                                             <div style={{ display: 'flex', gap: '4px' }}>
+                                                {onAddToCart && (
+                                                    <button
+                                                        onClick={() => onAddToCart(part)}
+                                                        disabled={(part.stock ?? 0) <= 0}
+                                                        style={{ backgroundColor: '#f59e0b', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', color: '#0f172a' }}
+                                                        title="Agregar al Carrito Mayorista"
+                                                    >
+                                                        + Mayor
+                                                    </button>
+                                                )}
                                                 <button
                                                     onClick={() => setSelectedPartForSale(part)}
                                                     disabled={(part.stock ?? 0) <= 0}

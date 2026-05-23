@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 const xlsx = require('xlsx');
 const path = require('path');
+const PDFDocument = require('pdfkit');
 const db = require('./database');
 
 const app = express();
@@ -581,6 +582,19 @@ app.post('/api/sales/:id/return', (req, res) => {
                     price: sale.unit_price,
                     concept: `Devolución de Venta #${saleId}`
                 });
+
+                // Si esta venta pertenece a un pedido mayorista, verificar si todos los ítems fueron devueltos
+                if (sale.wholesale_order_id) {
+                    db.all('SELECT refunded FROM sales WHERE wholesale_order_id = ?', [sale.wholesale_order_id], (err, rows) => {
+                        if (!err && rows) {
+                            const allRefunded = rows.every(r => r.refunded === 1);
+                            if (allRefunded) {
+                                db.run("UPDATE wholesale_orders SET status = 'returned' WHERE id = ?", [sale.wholesale_order_id]);
+                            }
+                        }
+                    });
+                }
+
                 res.json({ "message": "success", "data": { id: saleId, status: "returned" } });
             });
         });
@@ -834,6 +848,424 @@ app.post('/api/database/reset', (req, res) => {
         });
     });
 });
+
+
+// ═══════════════════════════════════════════════════════════════
+//  VENTAS POR MAYOR
+// ═══════════════════════════════════════════════════════════════
+
+// GET — Listado de pedidos mayoristas (con filtro opcional por cliente)
+app.get('/api/wholesale', (req, res) => {
+    const { cliente } = req.query;
+    let sql = `SELECT * FROM wholesale_orders`;
+    const params = [];
+    if (cliente) {
+        sql += ` WHERE cliente LIKE ?`;
+        params.push(`%${cliente}%`);
+    }
+    sql += ` ORDER BY order_date ASC`;
+
+    db.all(sql, params, (err, orders) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'success', data: orders });
+    });
+});
+
+// GET — Sugerencia de precio: último precio de un producto para un cliente
+// NOTA: Esta ruta debe estar ANTES de /api/wholesale/:id para evitar conflicto en Express
+app.get('/api/wholesale/price-hint/:part_id', (req, res) => {
+    const { cliente } = req.query;
+    const { part_id } = req.params;
+    if (!cliente) return res.json({ message: 'success', data: null });
+
+    const sql = `
+        SELECT wi.unit_price, wo.order_date
+        FROM wholesale_items wi
+        JOIN wholesale_orders wo ON wi.order_id = wo.id
+        WHERE wi.part_id = ? AND wo.cliente LIKE ? AND wo.status = 'active'
+        ORDER BY wo.order_date DESC
+        LIMIT 1
+    `;
+    db.get(sql, [part_id, `%${cliente}%`], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'success', data: row || null });
+    });
+});
+
+// GET — Detalle de un pedido (con ítems)
+app.get('/api/wholesale/:id', (req, res) => {
+    const orderId = req.params.id;
+    db.get('SELECT * FROM wholesale_orders WHERE id = ?', [orderId], (err, order) => {
+        if (err || !order) return res.status(404).json({ error: 'Pedido no encontrado' });
+
+        const sql = `
+            SELECT wi.*, p.codigo_producto, p.codigo, p.name, p.internal_measure, p.external_measure, p.height
+            FROM wholesale_items wi
+            JOIN parts p ON wi.part_id = p.id
+            WHERE wi.order_id = ?
+        `;
+        db.all(sql, [orderId], (err, items) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'success', data: { ...order, items } });
+        });
+    });
+});
+
+// POST — Crear pedido mayorista (procesa carrito completo)
+app.post('/api/wholesale', (req, res) => {
+    const { cliente, items, invoice_type, notes } = req.body;
+
+    if (!cliente || !items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Faltan datos: cliente e ítems son requeridos.' });
+    }
+
+    // Validar stock de todos los ítems primero
+    const checkPromises = items.map(item =>
+        new Promise((resolve, reject) => {
+            db.get('SELECT stock, name FROM parts WHERE id = ?', [item.part_id], (err, row) => {
+                if (err || !row) return reject(`Producto ID ${item.part_id} no encontrado.`);
+                if (row.stock < item.quantity) return reject(`Stock insuficiente para "${row.name}". Disponible: ${row.stock}`);
+                resolve(row);
+            });
+        })
+    );
+
+    Promise.all(checkPromises)
+        .then(() => {
+            // Calcular totales
+            const subtotal = items.reduce((acc, item) => acc + (parseFloat(item.unit_price) * parseInt(item.quantity)), 0);
+            const total = subtotal; // Sin descuento adicional por ahora
+
+            // Crear el pedido cabecera
+            const insertOrder = 'INSERT INTO wholesale_orders (cliente, subtotal, total, invoice_type, notes) VALUES (?,?,?,?,?)';
+            db.run(insertOrder, [cliente.trim(), subtotal, total, invoice_type || 'SIN_FACTURA', notes || ''], function(err) {
+                if (err) return res.status(500).json({ error: 'Error creando el pedido: ' + err.message });
+
+                const orderId = this.lastID;
+                const insertItem = 'INSERT INTO wholesale_items (order_id, part_id, quantity, unit_price, total_price) VALUES (?,?,?,?,?)';
+                const updateStock = 'UPDATE parts SET stock = stock - ? WHERE id = ?';
+
+                // Insertar ítems y descontar stock (secuencial)
+                const processItem = (index) => {
+                    if (index >= items.length) {
+                        // Todos procesados: devolver respuesta
+                        return res.json({
+                            message: 'success',
+                            data: { id: orderId, cliente, subtotal, total, items_count: items.length }
+                        });
+                    }
+
+                    const item = items[index];
+                    const qty = parseInt(item.quantity);
+                    const price = parseFloat(item.unit_price);
+                    const itemTotal = qty * price;
+
+                    db.run(insertItem, [orderId, item.part_id, qty, price, itemTotal], (err) => {
+                        if (err) console.error('Error insertando ítem:', err.message);
+
+                        db.run(updateStock, [qty, item.part_id], (err) => {
+                            if (err) console.error('Error actualizando stock:', err.message);
+
+                            // Log Kardex
+                            logMovement({
+                                part_id: item.part_id,
+                                type: 'VENTA_MAYOR',
+                                quantity: -qty,
+                                price,
+                                concept: `Venta Mayor #${orderId} — Cliente: ${cliente}`
+                            });
+
+                            // Registrar también en la tabla de ventas regulares
+                            // para que aparezca en "Ventas del Día"
+                            const invoiceLabel = invoice_type || 'MAYOR_SIN_FACTURA';
+                            db.run(
+                                'INSERT INTO sales (part_id, quantity, unit_price, total_price, invoice_type, wholesale_order_id) VALUES (?,?,?,?,?,?)',
+                                [item.part_id, qty, price, itemTotal, invoiceLabel, orderId],
+                                (err) => { if (err) console.error('Error registrando venta en sales:', err.message); }
+                            );
+
+                            processItem(index + 1);
+                        });
+                    });
+                };
+
+                processItem(0);
+            });
+        })
+        .catch(errMsg => {
+            res.status(400).json({ error: errMsg });
+        });
+});
+
+// POST — Devolver pedido mayorista completo
+app.post('/api/wholesale/:id/return', (req, res) => {
+    const orderId = req.params.id;
+
+    db.get('SELECT * FROM wholesale_orders WHERE id = ?', [orderId], (err, order) => {
+        if (err || !order) return res.status(404).json({ error: 'Pedido no encontrado' });
+        if (order.status === 'returned') return res.status(400).json({ error: 'Este pedido ya fue devuelto' });
+
+        // Obtener todas las ventas regulares ligadas a este pedido mayorista
+        db.all('SELECT * FROM sales WHERE wholesale_order_id = ?', [orderId], (err, salesItems) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            // Marcar cabecera del pedido mayorista como devuelto
+            db.run("UPDATE wholesale_orders SET status = 'returned' WHERE id = ?", [orderId], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+
+                // Procesar la devolución ítem a ítem
+                const restoreItem = (index) => {
+                    if (index >= salesItems.length) {
+                        return res.json({ message: 'success', data: { id: orderId, status: 'returned' } });
+                    }
+
+                    const sale = salesItems[index];
+
+                    // Si ya fue devuelto individualmente desde "Ventas del día", omitirlo
+                    if (sale.refunded === 1 || sale.refunded === true) {
+                        return restoreItem(index + 1);
+                    }
+
+                    // Marcar este ítem como devuelto en sales
+                    db.run('UPDATE sales SET refunded = 1 WHERE id = ?', [sale.id], (err) => {
+                        if (err) console.error('Error marcando ítem de venta como devuelto:', err.message);
+
+                        // Restaurar stock
+                        db.run('UPDATE parts SET stock = stock + ? WHERE id = ?', [sale.quantity, sale.part_id], (err) => {
+                            if (err) console.error('Error restaurando stock:', err.message);
+
+                            // Registrar movimiento de Kardex
+                            logMovement({
+                                part_id: sale.part_id,
+                                type: 'DEVOLUCION_MAYOR',
+                                quantity: sale.quantity,
+                                price: sale.unit_price,
+                                concept: `Devolución Venta Mayor #${orderId} — ${order.cliente}`
+                            });
+
+                            restoreItem(index + 1);
+                        });
+                    });
+                };
+
+                restoreItem(0);
+            });
+        });
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// ── Cotizaciones ────────────────────────────────────────────────────────────
+
+// GET — Listar todas las cotizaciones
+app.get('/api/quotations', (req, res) => {
+    db.all('SELECT * FROM quotations ORDER BY quote_date DESC', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: 'success', data: rows });
+    });
+});
+
+// GET — Detalle de cotización con ítems
+app.get('/api/quotations/:id', (req, res) => {
+    db.get('SELECT * FROM quotations WHERE id = ?', [req.params.id], (err, quote) => {
+        if (err || !quote) return res.status(404).json({ error: 'Cotización no encontrada' });
+        const sql = `
+            SELECT qi.*, p.codigo_producto, p.codigo, p.name, p.internal_measure, p.external_measure, p.height, p.marca
+            FROM quotation_items qi
+            JOIN parts p ON qi.part_id = p.id
+            WHERE qi.quotation_id = ?
+        `;
+        db.all(sql, [req.params.id], (err, items) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: 'success', data: { ...quote, items } });
+        });
+    });
+});
+
+// POST — Crear cotización (sin descontar stock)
+app.post('/api/quotations', (req, res) => {
+    const { cliente, items, invoice_type, notes, valid_days } = req.body;
+    if (!cliente || !items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'Faltan datos: cliente e ítems son requeridos.' });
+    }
+    const subtotal = items.reduce((acc, i) => acc + parseFloat(i.unit_price) * parseInt(i.quantity), 0);
+    const insert = 'INSERT INTO quotations (cliente, subtotal, total, invoice_type, notes, valid_days) VALUES (?,?,?,?,?,?)';
+    db.run(insert, [cliente.trim(), subtotal, subtotal, invoice_type || 'COTIZACION', notes || '', valid_days || 7], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        const qId = this.lastID;
+        const insertItem = 'INSERT INTO quotation_items (quotation_id, part_id, quantity, unit_price, total_price) VALUES (?,?,?,?,?)';
+        const processItem = (index) => {
+            if (index >= items.length) {
+                return res.json({ message: 'success', data: { id: qId, cliente, subtotal, total: subtotal } });
+            }
+            const item = items[index];
+            const qty = parseInt(item.quantity);
+            const price = parseFloat(item.unit_price);
+            db.run(insertItem, [qId, item.part_id, qty, price, qty * price], (err) => {
+                if (err) console.error('Error insertando ítem cotización:', err.message);
+                processItem(index + 1);
+            });
+        };
+        processItem(0);
+    });
+});
+
+// POST — Confirmar cotización → convertir en venta mayorista
+app.post('/api/quotations/:id/confirm', (req, res) => {
+    const qId = req.params.id;
+    db.get('SELECT * FROM quotations WHERE id = ?', [qId], (err, quote) => {
+        if (err || !quote) return res.status(404).json({ error: 'Cotización no encontrada' });
+        if (quote.status !== 'pending') return res.status(400).json({ error: `La cotización ya está en estado: ${quote.status}` });
+
+        const sql = `
+            SELECT qi.*, p.stock, p.name
+            FROM quotation_items qi JOIN parts p ON qi.part_id = p.id
+            WHERE qi.quotation_id = ?
+        `;
+        db.all(sql, [qId], (err, items) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            // Verificar stock
+            for (const item of items) {
+                if (item.stock < item.quantity) {
+                    return res.status(400).json({ error: `Stock insuficiente para "${item.name}". Disponible: ${item.stock}` });
+                }
+            }
+
+            const invoiceType = quote.invoice_type === 'COTIZACION' ? 'MAYOR_SIN_FACTURA' : quote.invoice_type;
+            const insertOrder = 'INSERT INTO wholesale_orders (cliente, subtotal, total, invoice_type, notes) VALUES (?,?,?,?,?)';
+            db.run(insertOrder, [quote.cliente, quote.subtotal, quote.total, invoiceType, quote.notes || ''], function(err) {
+                if (err) return res.status(500).json({ error: err.message });
+                const orderId = this.lastID;
+                const insertItem = 'INSERT INTO wholesale_items (order_id, part_id, quantity, unit_price, total_price) VALUES (?,?,?,?,?)';
+                const updateStock = 'UPDATE parts SET stock = stock - ? WHERE id = ?';
+
+                const processItem = (index) => {
+                    if (index >= items.length) {
+                        db.run("UPDATE quotations SET status = 'confirmed', wholesale_order_id = ? WHERE id = ?", [orderId, qId], () => {});
+                        return res.json({ message: 'success', data: { id: orderId, cliente: quote.cliente, total: quote.total } });
+                    }
+                    const item = items[index];
+                    const qty = parseInt(item.quantity);
+                    const price = parseFloat(item.unit_price);
+                    db.run(insertItem, [orderId, item.part_id, qty, price, qty * price], () => {
+                        db.run(updateStock, [qty, item.part_id], () => {
+                            logMovement({ part_id: item.part_id, type: 'VENTA_MAYOR', quantity: -qty, price, concept: `Venta Mayor #${orderId} (Cotiz. #${qId}) — ${quote.cliente}` });
+                            db.run('INSERT INTO sales (part_id, quantity, unit_price, total_price, invoice_type, wholesale_order_id) VALUES (?,?,?,?,?,?)',
+                                [item.part_id, qty, price, qty * price, invoiceType, orderId], () => {});
+                            processItem(index + 1);
+                        });
+                    });
+                };
+                processItem(0);
+            });
+        });
+    });
+});
+
+// POST — Cancelar cotización
+app.post('/api/quotations/:id/cancel', (req, res) => {
+    db.run("UPDATE quotations SET status = 'cancelled' WHERE id = ? AND status = 'pending'", [req.params.id], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(400).json({ error: 'No se pudo cancelar. Ya está confirmada o cancelada.' });
+        res.json({ message: 'success' });
+    });
+});
+
+// GET — Generar PDF de cotización
+app.get('/api/quotations/:id/pdf', (req, res) => {
+    db.get('SELECT * FROM quotations WHERE id = ?', [req.params.id], (err, quote) => {
+        if (err || !quote) return res.status(404).json({ error: 'Cotización no encontrada' });
+        const sql = `
+            SELECT qi.*, p.codigo_producto, p.codigo, p.name, p.internal_measure, p.external_measure, p.height, p.marca
+            FROM quotation_items qi JOIN parts p ON qi.part_id = p.id
+            WHERE qi.quotation_id = ?
+        `;
+        db.all(sql, [req.params.id], (err, items) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            const doc = new PDFDocument({ margin: 50, size: 'A4' });
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="cotizacion-${req.params.id}.pdf"`);
+            doc.pipe(res);
+
+            // Header
+            doc.fontSize(20).font('Helvetica-Bold').text('La casa de los retenes S&G', { align: 'center' });
+            doc.fontSize(13).font('Helvetica').fillColor('#555555').text('COTIZACION', { align: 'center' });
+            doc.fillColor('#000000');
+
+            const qDate = new Date(quote.quote_date);
+            const validUntil = new Date(qDate);
+            validUntil.setDate(validUntil.getDate() + (quote.valid_days || 7));
+            const fmtDate = d => d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            doc.moveDown(0.5);
+            doc.fontSize(10).text(`Fecha de emision: ${fmtDate(qDate)}`, { align: 'right' });
+            doc.text(`Valida hasta: ${fmtDate(validUntil)}`, { align: 'right' });
+
+            doc.moveDown();
+            doc.fontSize(11).font('Helvetica-Bold').text('Cliente: ', { continued: true }).font('Helvetica').text(quote.cliente);
+            if (quote.notes) {
+                doc.fontSize(10).font('Helvetica-Bold').text('Notas: ', { continued: true }).font('Helvetica').text(quote.notes);
+            }
+
+            doc.moveDown();
+            doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cccccc').stroke();
+            doc.moveDown(0.5);
+
+            // Table header
+            const C = { n: 50, cod: 75, desc: 195, cant: 355, precio: 405, sub: 475 };
+            doc.fontSize(9).font('Helvetica-Bold').fillColor('#333333');
+            const hY = doc.y;
+            doc.text('#', C.n, hY, { width: 20, lineBreak: false });
+            doc.text('Codigo', C.cod, hY, { width: 115, lineBreak: false });
+            doc.text('Descripcion', C.desc, hY, { width: 155, lineBreak: false });
+            doc.text('Cant', C.cant, hY, { width: 45, align: 'right', lineBreak: false });
+            doc.text('P.Unit Bs.', C.precio, hY, { width: 65, align: 'right', lineBreak: false });
+            doc.text('Subtotal Bs.', C.sub, hY, { width: 70, align: 'right' });
+
+            doc.moveDown(0.4);
+            doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#333333').lineWidth(1).stroke();
+            doc.moveDown(0.4);
+
+            // Table rows
+            doc.font('Helvetica').fontSize(9).fillColor('#000000');
+            items.forEach((item, i) => {
+                const rowY = doc.y;
+                const codigo = item.codigo_producto || item.codigo || '-';
+                const measures = `${item.internal_measure}x${item.external_measure}x${item.height}`;
+                const desc = item.name ? `${item.name} (${measures})` : measures;
+                const sub = (item.quantity * item.unit_price).toFixed(2);
+                doc.text(String(i + 1), C.n, rowY, { width: 20, lineBreak: false });
+                doc.text(codigo, C.cod, rowY, { width: 115, lineBreak: false });
+                doc.text(desc, C.desc, rowY, { width: 155, lineBreak: false });
+                doc.text(String(item.quantity), C.cant, rowY, { width: 45, align: 'right', lineBreak: false });
+                doc.text(item.unit_price.toFixed(2), C.precio, rowY, { width: 65, align: 'right', lineBreak: false });
+                doc.text(sub, C.sub, rowY, { width: 70, align: 'right' });
+                doc.moveDown(0.4);
+                if (i % 2 === 1) {
+                    doc.rect(50, rowY - 3, 495, doc.y - rowY + 3).fillColor('#f8f8f8').fill();
+                    doc.fillColor('#000000');
+                }
+            });
+
+            doc.moveDown(0.5);
+            doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#333333').lineWidth(1).stroke();
+            doc.moveDown(0.5);
+
+            doc.fontSize(13).font('Helvetica-Bold').text(`TOTAL: Bs. ${quote.total.toFixed(2)}`, { align: 'right' });
+
+            doc.moveDown(2.5);
+            doc.fontSize(8).font('Helvetica').fillColor('#888888')
+                .text(`Esta cotizacion es valida por ${quote.valid_days || 7} dias desde su emision.`, { align: 'center' })
+                .text('La casa de los retenes S&G', { align: 'center' });
+
+            doc.end();
+        });
+    });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
 
 // Catch-all route to serve the frontend index.html
 app.get('*', (req, res) => {

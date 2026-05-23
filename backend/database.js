@@ -68,10 +68,18 @@ const db = new sqlite3.Database(dbPath, (err) => {
             invoice_type TEXT,
             sale_date DATETIME DEFAULT CURRENT_TIMESTAMP,
             refunded BOOLEAN DEFAULT 0,
+            wholesale_order_id INTEGER,
             FOREIGN KEY(part_id) REFERENCES parts(id)
         )`, (err) => {
             if (err) {
                 console.error('Error creating sales table: ' + err.message);
+            } else {
+                // Migración para bases de datos existentes: agregar columna si no existe
+                db.run('ALTER TABLE sales ADD COLUMN wholesale_order_id INTEGER', (err) => {
+                    if (err && !err.message.includes('duplicate column')) {
+                        // Ignorar error si la columna ya existe
+                    }
+                });
             }
         });
 
@@ -93,6 +101,74 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 db.run('CREATE INDEX IF NOT EXISTS idx_movements_part ON stock_movements(part_id)', () => {});
             }
         });
+
+        // ── Ventas por Mayor ────────────────────────────────────────────────────
+        // Cabecera del pedido mayorista
+        db.run(`CREATE TABLE IF NOT EXISTS wholesale_orders (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente      TEXT NOT NULL COLLATE NOCASE,
+            subtotal     REAL DEFAULT 0,
+            total        REAL DEFAULT 0,
+            invoice_type TEXT DEFAULT 'SIN_FACTURA',
+            notes        TEXT,
+            status       TEXT DEFAULT 'active',
+            order_date   DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) {
+                console.error('Error creating wholesale_orders table: ' + err.message);
+            } else {
+                db.run('CREATE INDEX IF NOT EXISTS idx_wholesale_cliente ON wholesale_orders(cliente)', () => {});
+            }
+        });
+
+        // Líneas/ítems de cada pedido mayorista
+        db.run(`CREATE TABLE IF NOT EXISTS wholesale_items (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id    INTEGER NOT NULL,
+            part_id     INTEGER NOT NULL,
+            quantity    INTEGER NOT NULL,
+            unit_price  REAL NOT NULL,
+            total_price REAL NOT NULL,
+            FOREIGN KEY(order_id) REFERENCES wholesale_orders(id),
+            FOREIGN KEY(part_id)  REFERENCES parts(id)
+        )`, (err) => {
+            if (err) {
+                console.error('Error creating wholesale_items table: ' + err.message);
+            } else {
+                db.run('CREATE INDEX IF NOT EXISTS idx_wholesale_items_order ON wholesale_items(order_id)', () => {});
+            }
+        });
+        // ── Cotizaciones ────────────────────────────────────────────────────────
+        db.run(`CREATE TABLE IF NOT EXISTS quotations (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente           TEXT NOT NULL COLLATE NOCASE,
+            subtotal          REAL DEFAULT 0,
+            total             REAL DEFAULT 0,
+            invoice_type      TEXT DEFAULT 'COTIZACION',
+            notes             TEXT,
+            status            TEXT DEFAULT 'pending',
+            valid_days        INTEGER DEFAULT 7,
+            wholesale_order_id INTEGER,
+            quote_date        DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) console.error('Error creating quotations table: ' + err.message);
+            else db.run('CREATE INDEX IF NOT EXISTS idx_quotations_cliente ON quotations(cliente)', () => {});
+        });
+
+        db.run(`CREATE TABLE IF NOT EXISTS quotation_items (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            quotation_id   INTEGER NOT NULL,
+            part_id        INTEGER NOT NULL,
+            quantity       INTEGER NOT NULL,
+            unit_price     REAL NOT NULL,
+            total_price    REAL NOT NULL,
+            FOREIGN KEY(quotation_id) REFERENCES quotations(id),
+            FOREIGN KEY(part_id)      REFERENCES parts(id)
+        )`, (err) => {
+            if (err) console.error('Error creating quotation_items table: ' + err.message);
+            else db.run('CREATE INDEX IF NOT EXISTS idx_quotation_items_q ON quotation_items(quotation_id)', () => {});
+        });
+        // ────────────────────────────────────────────────────────────────────────
     }
 });
 
