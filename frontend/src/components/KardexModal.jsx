@@ -183,12 +183,10 @@ export default function KardexModal({ part, onClose }) {
     const [movements, setMovements] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [activeTab, setActiveTab] = useState('commercial'); // 'commercial' | 'manual'
 
     useEffect(() => {
         if (!part) return;
         setLoading(true);
-        setActiveTab('commercial');
         api.getKardex(part.id)
             .then(data => {
                 if (data.message === 'success') setMovements(data.data);
@@ -199,50 +197,8 @@ export default function KardexModal({ part, onClose }) {
 
     if (!part) return null;
 
-    const commercialMovements = movements.filter(m => COMMERCIAL_TYPES.has(m.type));
-    const manualMovements = movements.filter(m => MANUAL_TYPES.has(m.type) || !COMMERCIAL_TYPES.has(m.type) && !MANUAL_TYPES.has(m.type));
-
-    const activeMovements = activeTab === 'commercial' ? commercialMovements : manualMovements;
-    const tabLabel = activeTab === 'commercial' ? '📦 Ventas y Movimientos' : '🛠️ Registros Manuales';
-
-    const totalVendido = commercialMovements.filter(m => m.type === 'VENTA').reduce((s, m) => s + Math.abs(m.quantity), 0);
-    const totalIngresado = manualMovements.filter(m => m.quantity > 0).reduce((s, m) => s + m.quantity, 0);
-
-    const tabStyle = (tab) => ({
-        padding: '0.55rem 1.1rem',
-        fontSize: '0.88rem',
-        fontWeight: 600,
-        borderRadius: '0.5rem 0.5rem 0 0',
-        border: 'none',
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-        ...(activeTab === tab ? {
-            background: '#1e293b',
-            color: activeTab === tab && tab === 'commercial' ? '#38bdf8' : '#a78bfa',
-            borderBottom: `2px solid ${tab === 'commercial' ? '#38bdf8' : '#a78bfa'}`,
-        } : {
-            background: 'transparent',
-            color: '#64748b',
-            borderBottom: '2px solid transparent',
-        })
-    });
-
-    const badgeStyle = (count, tab) => ({
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        background: activeTab === tab
-            ? (tab === 'commercial' ? 'rgba(56,189,248,0.2)' : 'rgba(167,139,250,0.2)')
-            : 'rgba(100,116,139,0.2)',
-        color: activeTab === tab
-            ? (tab === 'commercial' ? '#38bdf8' : '#a78bfa')
-            : '#64748b',
-        borderRadius: '999px',
-        fontSize: '0.72rem',
-        fontWeight: 700,
-        minWidth: '20px',
-        height: '20px',
-        padding: '0 6px',
-        marginLeft: '6px',
-    });
+    const totalVendido = movements.filter(m => m.type === 'VENTA').reduce((s, m) => s + Math.abs(m.quantity), 0);
+    const totalIngresado = movements.filter(m => m.quantity > 0 && m.type !== 'VENTA').reduce((s, m) => s + m.quantity, 0);
 
     return (
         <div
@@ -283,16 +239,16 @@ export default function KardexModal({ part, onClose }) {
                         <button
                             onClick={() => {
                                 const win = window.open('', '_blank');
-                                win.document.write(buildPrintHtml(part, activeMovements, tabLabel));
+                                win.document.write(buildPrintHtml(part, movements, '📋 Todos los Movimientos'));
                                 win.document.close();
                             }}
-                            disabled={activeMovements.length === 0}
+                            disabled={movements.length === 0}
                             style={{
-                                background: activeMovements.length === 0 ? 'rgba(100,116,139,0.2)' : 'rgba(16,185,129,0.15)',
-                                border: `1px solid ${activeMovements.length === 0 ? '#334155' : '#10b981'}`,
-                                color: activeMovements.length === 0 ? '#475569' : '#34d399',
+                                background: movements.length === 0 ? 'rgba(100,116,139,0.2)' : 'rgba(16,185,129,0.15)',
+                                border: `1px solid ${movements.length === 0 ? '#334155' : '#10b981'}`,
+                                color: movements.length === 0 ? '#475569' : '#34d399',
                                 borderRadius: '0.5rem', padding: '0.4rem 0.9rem',
-                                cursor: activeMovements.length === 0 ? 'not-allowed' : 'pointer',
+                                cursor: movements.length === 0 ? 'not-allowed' : 'pointer',
                                 fontSize: '0.85rem', fontWeight: 600,
                                 display: 'flex', alignItems: 'center', gap: '0.35rem',
                                 transition: 'all 0.2s'
@@ -334,29 +290,6 @@ export default function KardexModal({ part, onClose }) {
                     </span>
                 </div>
 
-                {/* ── Tabs ── */}
-                <div style={{
-                    display: 'flex',
-                    gap: '0.25rem',
-                    padding: '0.75rem 1.5rem 0',
-                    borderBottom: '1px solid #334155',
-                    flexShrink: 0,
-                    background: 'rgba(0,0,0,0.15)'
-                }}>
-                    <button style={tabStyle('commercial')} onClick={() => setActiveTab('commercial')}>
-                        📦 Ventas y Movimientos
-                        <span style={badgeStyle(commercialMovements.length, 'commercial')}>
-                            {commercialMovements.length}
-                        </span>
-                    </button>
-                    <button style={tabStyle('manual')} onClick={() => setActiveTab('manual')}>
-                        🛠️ Registros Manuales
-                        <span style={badgeStyle(manualMovements.length, 'manual')}>
-                            {manualMovements.length}
-                        </span>
-                    </button>
-                </div>
-
                 {/* ── Body ── */}
                 <div style={{ overflowY: 'auto', flex: 1, padding: '1.25rem 1.5rem' }}>
                     {loading && (
@@ -375,7 +308,7 @@ export default function KardexModal({ part, onClose }) {
                     )}
 
                     {!loading && !error && (
-                        <MovementTable movements={activeMovements} />
+                        <MovementTable movements={movements} />
                     )}
                 </div>
             </div>

@@ -41,15 +41,21 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                 notes,
                 items: cartItems.map(i => ({ part_id: i.id, quantity: parseInt(i.quantity), unit_price: parseFloat(i.unit_price) }))
             });
-            toast.success(`📋 Cotización #${data.data.id} guardada — descargando PDFs...`);
-            await api.downloadQuotationPdf(data.data.id, 'cliente');
-            await api.downloadQuotationPdf(data.data.id, 'interno');
+            toast.success(`📋 Cotización #${data.data.id} guardada`);
             onClearCart();
             setCliente('');
             setNotes('');
             if (onQuoteComplete) onQuoteComplete();
+            try {
+                await api.downloadQuotationPdf(data.data.id, 'cliente');
+                await api.downloadQuotationPdf(data.data.id, 'interno');
+            } catch (pdfErr) {
+                toast.error('Cotización guardada, pero el PDF no está disponible (Edge Function no desplegada).');
+                console.error('PDF error:', pdfErr);
+            }
         } catch (err) {
-            toast.error('Error de conexión');
+            toast.error(`Error: ${err.message}`);
+            console.error('Quote error:', err);
         } finally {
             setQuoting(false);
         }
@@ -75,7 +81,8 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
             setNotes('');
             onOrderComplete();
         } catch (err) {
-            toast.error('Error de conexión');
+            toast.error(`Error: ${err.message}`);
+            console.error('Wholesale error:', err);
         } finally {
             setSubmitting(false);
         }
