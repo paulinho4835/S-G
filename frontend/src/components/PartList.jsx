@@ -380,11 +380,10 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
 
                     <div>
                         <input
-                            className="search-green"
                             placeholder="Buscar código, marca o aplicación..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            style={{ width: '280px', padding: '0.5rem', fontSize: '0.85rem', margin: 0, backgroundColor: '#16a34a', color: 'white', border: '2px solid #22c55e', borderRadius: '6px', fontWeight: '500' }}
+                            style={{ width: '280px', padding: '0.5rem', fontSize: '0.85rem', margin: 0 }}
                         />
                     </div>
 
@@ -514,13 +513,13 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
                                         <td style={{ padding: '8px', fontWeight: 'bold', color: '#10b981', fontSize: '0.85rem' }}>
                                             {part.cost_price ? `Bs. ${parseFloat(part.cost_price).toFixed(2)}` : '-'}
                                         </td>
-                                        <td style={{ padding: '8px', color: '#f59e0b', fontSize: '1rem', fontWeight: 'bold' }}>{part.pv_geli || '-'}</td>
+                                        <td style={{ padding: '8px', color: '#ec4899', fontSize: '0.85rem' }}>{part.pv_geli || '-'}</td>
                                         <td style={{ padding: '8px' }}>
                                             <span style={{
-                                                padding: '2px 8px',
+                                                padding: '2px 6px',
                                                 borderRadius: '4px',
-                                                background: (part.stock ?? 0) > 0 ? '#16a34a' : 'rgba(239, 68, 68, 0.2)',
-                                                color: (part.stock ?? 0) > 0 ? 'white' : '#f87171',
+                                                background: (part.stock ?? 0) > 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                                color: (part.stock ?? 0) > 0 ? '#34d399' : '#f87171',
                                                 fontWeight: 'bold',
                                                 fontSize: '0.85rem'
                                             }}>

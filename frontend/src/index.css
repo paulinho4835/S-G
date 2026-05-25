@@ -270,11 +270,6 @@ input:focus {
   opacity: 0.8 !important;
 }
 
-.search-green::placeholder {
-  color: rgba(255, 255, 255, 0.75) !important;
-  opacity: 1 !important;
-}
-
 .filter-input:focus {
   background-color: #faf6eb !important;
   color: #1e293b !important;
