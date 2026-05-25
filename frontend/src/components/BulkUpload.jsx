@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as api from '../lib/api';
 
 export default function BulkUpload({ onUploadComplete }) {
     const [file, setFile] = useState(null);
@@ -11,39 +12,16 @@ export default function BulkUpload({ onUploadComplete }) {
     };
 
     const handleUpload = async () => {
-        if (!file) {
-            setMessage('Por favor selecciona un archivo Excel');
-            return;
-        }
-
+        if (!file) { setMessage('Por favor selecciona un archivo Excel'); return; }
         setUploading(true);
         setMessage('');
-
-        const formData = new FormData();
-        formData.append('file', file);
-
         try {
-            const response = await fetch('/api/parts/bulk-upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-
-            if (data.message === 'success') {
-                setMessage(`✅ Carga completada: ${data.imported} nuevos, ${data.updated || 0} actualizados.`);
-                setFile(null);
-                onUploadComplete();
-            } else if (data.message === 'partial_success') {
-                setMessage(`⚠️ Carga parcial: ${data.imported} nuevos, ${data.updated || 0} actualizados. Algunos errores ocurrieron.`);
-                setFile(null);
-                onUploadComplete();
-            } else {
-                setMessage(`❌ Error: ${data.error || 'Ocurrió un error al procesar'}`);
-            }
-        } catch (error) {
-            setMessage('❌ Error al cargar el archivo');
-            console.error(error);
+            const result = await api.bulkUploadParts(file);
+            setMessage(`✅ Carga completada: ${result.imported} nuevos, ${result.updated || 0} actualizados.`);
+            setFile(null);
+            onUploadComplete();
+        } catch (err) {
+            setMessage(`❌ Error: ${err.message}`);
         } finally {
             setUploading(false);
         }

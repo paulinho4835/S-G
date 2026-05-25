@@ -11,6 +11,7 @@ import WholesaleCart from './components/WholesaleCart';
 import WholesaleHistory from './components/WholesaleHistory';
 import QuotationsList from './components/QuotationsList';
 import { toast } from './lib/toast';
+import { supabase } from './lib/supabase';
 
 function App() {
     const [refreshKey, setRefreshKey] = useState(0);
@@ -54,9 +55,19 @@ function App() {
         setCartOpen(false);
         setView('quotations');
     };
-    const [isAuthenticated, setIsAuthenticated] = useState(() => {
-        return localStorage.getItem('auth_token') === 'pochita';
-    });
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [authLoading, setAuthLoading] = useState(true);
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setIsAuthenticated(!!session);
+            setAuthLoading(false);
+        });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setIsAuthenticated(!!session);
+        });
+        return () => subscription.unsubscribe();
+    }, []);
 
     useEffect(() => {
         const rootEl = document.getElementById('root');
@@ -102,13 +113,11 @@ function App() {
     };
 
     const handleLogin = () => {
-        localStorage.setItem('auth_token', 'pochita');
         setIsAuthenticated(true);
     };
 
-    if (!isAuthenticated) {
-        return <Login onLogin={handleLogin} />;
-    }
+    if (authLoading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#94a3b8' }}>Cargando...</div>;
+    if (!isAuthenticated) return <Login onLogin={handleLogin} />;
 
     return (
         <>
@@ -117,7 +126,7 @@ function App() {
                     <h1 style={{ margin: 0 }}>La casa de los retenes S&G</h1>
                     <button 
                         onClick={() => {
-                            localStorage.removeItem('auth_token');
+                            supabase.auth.signOut();
                             setIsAuthenticated(false);
                         }}
                         style={{

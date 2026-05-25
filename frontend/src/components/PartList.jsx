@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import * as api from '../lib/api';
 import SalesModal from './SalesModal';
 import EditPartModal from './EditPartModal';
 import AdjustStockModal from './AdjustStockModal';
@@ -70,17 +71,10 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
     };
 
     const fetchParts = async () => {
-        // Only show loading spinner on initial load or if list is empty
-        if (parts.length === 0) {
-            setLoading(true);
-        }
-
+        if (parts.length === 0) setLoading(true);
         try {
-            const res = await fetch('/api/parts');
-            const data = await res.json();
-            if (data.message === 'success') {
-                setParts(data.data);
-            }
+            const data = await api.getParts();
+            if (data.message === 'success') setParts(data.data);
         } catch (error) {
             console.error('Error fetching parts:', error);
         } finally {
@@ -237,17 +231,11 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
             onConfirm: async () => {
                 setConfirmModal(null);
                 try {
-                    const res = await fetch(`/api/parts/${id}`, { method: 'DELETE' });
-                    const data = await res.json();
-                    if (res.ok) {
-                        fetchParts();
-                        toast.success('Producto eliminado correctamente');
-                    } else {
-                        toast.error(data.error || 'No se pudo eliminar el producto.');
-                    }
+                    await api.deletePart(id);
+                    fetchParts();
+                    toast.success('Producto eliminado correctamente');
                 } catch (error) {
-                    console.error('Error deleting part:', error);
-                    toast.error('Error de conexión al intentar eliminar.');
+                    toast.error(error.message || 'No se pudo eliminar el producto.');
                 }
             }
         });
@@ -255,46 +243,25 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
 
     const handleConfirmSale = async (saleData) => {
         try {
-            const res = await fetch('/api/sales', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(saleData)
-            });
-            const data = await res.json();
-            if (data.message === 'success') {
-                toast.success('Venta registrada correctamente');
-                setSelectedPartForSale(null);
-                fetchParts();
-            } else {
-                toast.error('Error: ' + data.error);
-            }
+            await api.createSale(saleData);
+            toast.success('Venta registrada correctamente');
+            setSelectedPartForSale(null);
+            fetchParts();
         } catch (error) {
-            console.error('Error selling part:', error);
-            toast.error('Error al procesar la venta. Verifica que el servidor esté corriendo.');
+            toast.error('Error: ' + error.message);
         }
     };
 
     const handleRestock = async (qty) => {
         const part = selectedPartForRestock;
         if (!part) return;
-
         try {
-            const res = await fetch(`/api/parts/${part.id}/restock`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ quantity: qty })
-            });
-            const data = await res.json();
-            if (data.message === 'success') {
-                toast.success('Stock actualizado correctamente');
-                setSelectedPartForRestock(null);
-                fetchParts();
-            } else {
-                toast.error('Error: ' + data.error);
-            }
+            await api.restock(part.id, qty);
+            toast.success('Stock actualizado correctamente');
+            setSelectedPartForRestock(null);
+            fetchParts();
         } catch (error) {
-            console.error('Error restocking:', error);
-            toast.error('Error al actualizar stock');
+            toast.error('Error: ' + error.message);
         }
     };
 
@@ -303,7 +270,7 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
     };
 
     const handleDownloadExcel = () => {
-        window.location.href = '/api/parts/export';
+        api.exportPartsExcel(parts);
     };
 
     const handleReset = () => {
@@ -698,23 +665,7 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
                         {filteredParts.length === 0 && (
                             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed #334155' }}>
                                 <p style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>No se encontraron repuestos.</p>
-                                <p style={{ marginBottom: '2rem' }}>Si es la primera vez que abres la app, es posible que la base de datos esté vacía.</p>
-                                <button
-                                    onClick={() => setConfirmModal({
-                                        message: 'Esto intentará cargar los datos originales desde el paquete de instalación. ¿Proceder?',
-                                        onConfirm: async () => {
-                                            setConfirmModal(null);
-                                            const res = await fetch('/api/admin/restore-db', { method: 'POST' });
-                                            const data = await res.json();
-                                            toast.info(data.message || data.error);
-                                            setTimeout(() => window.location.reload(), 2500);
-                                        }
-                                    })}
-                                    className="primary"
-                                    style={{ backgroundColor: '#6366f1' }}
-                                >
-                                    🔄 Sincronizar Datos de Fábrica
-                                </button>
+                                <p style={{ marginBottom: '2rem', color: 'var(--text-secondary)' }}>Usa "Carga Masiva" para importar productos desde Excel, o registra uno nuevo.</p>
                             </div>
                         )}
                     </>

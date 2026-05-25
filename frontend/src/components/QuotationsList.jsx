@@ -1,30 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from '../lib/toast';
+import * as api from '../lib/api';
 
 const STATUS_LABEL = { pending: 'Pendiente', confirmed: 'Confirmada', cancelled: 'Cancelada' };
 const STATUS_COLOR = { pending: '#f59e0b', confirmed: '#10b981', cancelled: '#ef4444' };
-
-async function downloadPDF(id, tipo = 'cliente') {
-    try {
-        const url = tipo === 'interno'
-            ? `/api/quotations/${id}/pdf?type=interno`
-            : `/api/quotations/${id}/pdf`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Error generando PDF');
-        const blob = await res.blob();
-        const objUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = objUrl;
-        const suffix = tipo === 'interno' ? '-interno' : '-cliente';
-        a.download = `cotizacion-${String(id).padStart(4, '0')}${suffix}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(objUrl);
-    } catch (err) {
-        toast.error('Error descargando PDF: ' + err.message);
-    }
-}
 
 export default function QuotationsList() {
     const [quotations, setQuotations] = useState([]);
@@ -37,8 +16,7 @@ export default function QuotationsList() {
     const fetchQuotations = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/quotations');
-            const data = await res.json();
+            const data = await api.getQuotations();
             if (data.message === 'success') setQuotations(data.data);
         } catch {
             toast.error('Error cargando cotizaciones');
@@ -54,8 +32,7 @@ export default function QuotationsList() {
         setExpanded(id);
         if (!detail[id]) {
             try {
-                const res = await fetch(`/api/quotations/${id}`);
-                const data = await res.json();
+                const data = await api.getQuotation(id);
                 if (data.message === 'success') setDetail(prev => ({ ...prev, [id]: data.data }));
             } catch { toast.error('Error cargando detalle'); }
         }
@@ -65,15 +42,10 @@ export default function QuotationsList() {
         if (!window.confirm('¿Confirmar esta cotización como venta mayorista? Se descontará el stock.')) return;
         setConfirming(id);
         try {
-            const res = await fetch(`/api/quotations/${id}/confirm`, { method: 'POST' });
-            const data = await res.json();
-            if (data.message === 'success') {
-                toast.success(`✅ Venta Mayorista #${data.data.id} confirmada — Bs. ${data.data.total.toFixed(2)}`);
-                fetchQuotations();
-                setDetail(prev => { const d = { ...prev }; delete d[id]; return d; });
-            } else {
-                toast.error('Error: ' + data.error);
-            }
+            await api.confirmQuotation(id);
+            toast.success('✅ Cotización confirmada como venta mayorista');
+            fetchQuotations();
+            setDetail(prev => { const d = { ...prev }; delete d[id]; return d; });
         } catch { toast.error('Error de conexión'); }
         finally { setConfirming(null); }
     };
@@ -81,14 +53,9 @@ export default function QuotationsList() {
     const handleCancel = async (id) => {
         if (!window.confirm('¿Cancelar esta cotización?')) return;
         try {
-            const res = await fetch(`/api/quotations/${id}/cancel`, { method: 'POST' });
-            const data = await res.json();
-            if (data.message === 'success') {
-                toast.success('Cotización cancelada');
-                fetchQuotations();
-            } else {
-                toast.error('Error: ' + data.error);
-            }
+            await api.cancelQuotation(id);
+            toast.success('Cotización cancelada');
+            fetchQuotations();
         } catch { toast.error('Error de conexión'); }
     };
 
@@ -188,13 +155,13 @@ export default function QuotationsList() {
                                     )}
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                         <button
-                                            onClick={() => downloadPDF(q.id, 'cliente')}
+                                            onClick={() => api.downloadQuotationPdf(q.id, 'cliente').catch(err => toast.error(err.message))}
                                             style={{ padding: '6px 14px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 'bold' }}
                                         >
                                             📄 PDF Cliente
                                         </button>
                                         <button
-                                            onClick={() => downloadPDF(q.id, 'interno')}
+                                            onClick={() => api.downloadQuotationPdf(q.id, 'interno').catch(err => toast.error(err.message))}
                                             style={{ padding: '6px 14px', backgroundColor: '#7c3aed', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 'bold' }}
                                         >
                                             🔧 PDF Interno

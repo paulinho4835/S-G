@@ -1,18 +1,23 @@
 import React, { useState } from 'react';
+import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 
 export default function Login({ onLogin }) {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (username === 'pochita' && password === 'pochita') {
-            onLogin();
-            toast.success('¡Bienvenido!');
-        } else {
+        setLoading(true);
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
             toast.error('Credenciales incorrectas');
+        } else {
+            toast.success('¡Bienvenido!');
+            onLogin();
         }
+        setLoading(false);
     };
 
     return (
@@ -34,18 +39,19 @@ export default function Login({ onLogin }) {
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
             }}>
                 <div style={{ textAlign: 'center' }}>
-                    <h1 style={{ fontSize: '1.8rem', color: '#f8fafc', marginBottom: '0.5rem', marginTop: 0 }}>La Casa de los Retenes S&G</h1>
+                    <h1 style={{ fontSize: '1.8rem', color: '#f8fafc', marginBottom: '0.5rem', marginTop: 0 }}>La Casa de los Retenes S&amp;G</h1>
                     <p style={{ color: '#94a3b8', margin: 0 }}>Inicia sesión para continuar</p>
                 </div>
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', color: '#cbd5e1', fontSize: '0.9rem' }}>Usuario</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', color: '#cbd5e1', fontSize: '0.9rem' }}>Email</label>
                         <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Ingrese su usuario"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="admin@retenes.app"
+                            required
                             style={{
                                 width: '100%',
                                 padding: '0.75rem 1rem',
@@ -65,7 +71,8 @@ export default function Login({ onLogin }) {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Ingrese su contraseña"
+                            placeholder="Contraseña"
+                            required
                             style={{
                                 width: '100%',
                                 padding: '0.75rem 1rem',
@@ -81,6 +88,7 @@ export default function Login({ onLogin }) {
                     <button
                         type="submit"
                         className="primary"
+                        disabled={loading}
                         style={{
                             marginTop: '0.5rem',
                             padding: '0.85rem',
@@ -89,7 +97,7 @@ export default function Login({ onLogin }) {
                             backgroundColor: '#3b82f6'
                         }}
                     >
-                        Ingresar
+                        {loading ? 'Ingresando...' : 'Ingresar'}
                     </button>
                 </form>
             </div>

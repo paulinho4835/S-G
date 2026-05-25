@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as api from '../lib/api';
 
 function DatabaseMaintenance() {
     const [confirmText, setConfirmText] = useState('');
@@ -13,26 +14,7 @@ function DatabaseMaintenance() {
         setStatus({ type: '', message: '' });
 
         try {
-            const response = await fetch('/api/database/reset', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ confirmation: confirmText })
-            });
-
-            let data = {};
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                data = await response.json();
-            } else {
-                const text = await response.text();
-                throw new Error(text || `Error del servidor (${response.status})`);
-            }
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Ocurrió un error inesperado al vaciar la base de datos.');
-            }
+            await api.resetDatabase(confirmText);
 
             setStatus({
                 type: 'success',

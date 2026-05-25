@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import { toast } from '../lib/toast';
+import * as api from '../lib/api';
 
 function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -12,41 +13,29 @@ function SalesHistory() {
     const [loading, setLoading] = useState(false);
     const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm }
 
-    const fetchSales = (forceAll = false) => {
+    const fetchSales = async (forceAll = false) => {
         setLoading(true);
-        // Build URL
-        let url = 'http://localhost:3005/api/sales';
-
-        const params = new URLSearchParams();
-        if (!forceAll) {
-            if (startDate) params.append('startDate', startDate);
-            if (endDate) params.append('endDate', endDate);
-        }
-
-        if (params.toString()) {
-            url += `?${params.toString()}`;
-        }
-
-        fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                if (data.data) {
-                    // Filter by code if searchCode is provided
-                    let filteredSales = data.data;
-                    if (searchCode) {
-                        const searchLower = searchCode.toLowerCase();
-                        filteredSales = data.data.filter(sale =>
-                            (sale.part_name && sale.part_name.toLowerCase().includes(searchLower)) ||
-                            (sale.codigo && sale.codigo.toLowerCase().includes(searchLower)) ||
-                            (sale.codigo_producto && sale.codigo_producto.toLowerCase().includes(searchLower)) ||
-                            (sale.aplicacion && sale.aplicacion.toLowerCase().includes(searchLower))
-                        );
-                    }
-                    setSales(filteredSales);
+        try {
+            const filters = forceAll ? {} : { startDate: startDate || undefined, endDate: endDate || undefined };
+            const data = await api.getSales(filters);
+            if (data.data) {
+                let filteredSales = data.data;
+                if (searchCode) {
+                    const searchLower = searchCode.toLowerCase();
+                    filteredSales = data.data.filter(sale =>
+                        (sale.part_name && sale.part_name.toLowerCase().includes(searchLower)) ||
+                        (sale.codigo && sale.codigo.toLowerCase().includes(searchLower)) ||
+                        (sale.codigo_producto && sale.codigo_producto.toLowerCase().includes(searchLower)) ||
+                        (sale.aplicacion && sale.aplicacion.toLowerCase().includes(searchLower))
+                    );
                 }
-            })
-            .catch(err => console.error("Error fetching sales:", err))
-            .finally(() => setLoading(false));
+                setSales(filteredSales);
+            }
+        } catch (err) {
+            console.error("Error fetching sales:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -56,19 +45,15 @@ function SalesHistory() {
     const handleReturn = (saleId) => {
         setConfirmModal({
             message: '¿Seguro que deseas realizar la devolución de esta venta? El stock será restaurado.',
-            onConfirm: () => {
+            onConfirm: async () => {
                 setConfirmModal(null);
-                fetch(`http://localhost:3005/api/sales/${saleId}/return`, { method: 'POST' })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.message === 'success') {
-                            toast.success('Devolución registrada exitosamente');
-                            fetchSales();
-                        } else {
-                            toast.error('Error: ' + data.error);
-                        }
-                    })
-                    .catch(() => toast.error('Error de conexión'));
+                try {
+                    await api.returnSale(saleId);
+                    toast.success('Devolución registrada exitosamente');
+                    fetchSales();
+                } catch (err) {
+                    toast.error('Error: ' + err.message);
+                }
             }
         });
     };
@@ -95,15 +80,7 @@ function SalesHistory() {
         setEndDate('');
         setSearchCode('');
         setFilterType('ALL');
-        // We call fetchSales without arguments, so it defaults to today (no params)
-        setLoading(true);
-        fetch('http://localhost:3005/api/sales')
-            .then(res => res.json())
-            .then(data => {
-                if (data.data) setSales(data.data);
-            })
-            .catch(err => console.error("Error fetching sales:", err))
-            .finally(() => setLoading(false));
+        fetchSales(false);
     };
 
     return (

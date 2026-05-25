@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import * as api from '../lib/api';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend
 } from 'recharts';
@@ -30,14 +31,10 @@ export default function Dashboard({ onAlertClick }) {
     const outOfStock = allParts.filter(p => (p.stock ?? 0) === 0);
     const lowStock   = allParts.filter(p => (p.stock ?? 0) > 0 && (p.stock ?? 0) < threshold);
 
-    // Fetch sales summary whenever period changes
     const fetchSummary = useCallback((period) => {
         setSummaryLoading(true);
-        fetch(`/api/sales/summary?period=${period}`)
-            .then(r => r.json())
-            .then(d => {
-                if (d.message === 'success') setSalesSummary(d.data);
-            })
+        api.getSalesSummary(period)
+            .then(d => { if (d.message === 'success') setSalesSummary(d.data); })
             .catch(() => {})
             .finally(() => setSummaryLoading(false));
     }, []);
@@ -47,36 +44,25 @@ export default function Dashboard({ onAlertClick }) {
     }, [salesPeriod, fetchSummary]);
 
     useEffect(() => {
-        // Fetch all parts
-        fetch('/api/parts')
-            .then(res => res.json())
+        api.getParts()
             .then(payload => {
-                const parts = payload.data || payload;
+                const parts = payload.data || [];
                 setAllParts(parts);
-
-                const value = parts.reduce((sum, p) => {
-                    return sum + (parseFloat(p.cost_price) || 0) * (parseInt(p.stock) || 0);
-                }, 0);
+                const value = parts.reduce((sum, p) => sum + (parseFloat(p.cost_price) || 0) * (parseInt(p.stock) || 0), 0);
                 setTotalValue(value);
-
                 const groups = {};
                 parts.forEach(p => {
                     const key = (p.familia || p.name || 'Otro').split(' ')[0];
                     groups[key] = (groups[key] || 0) + 1;
                 });
-                const chartArr = Object.entries(groups)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 7)
-                    .map(([name, total]) => ({ name, total }));
+                const chartArr = Object.entries(groups).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([name, total]) => ({ name, total }));
                 setChartData(chartArr);
             })
             .catch(() => { setAllParts([]); setChartData([]); });
 
-        // Fetch top sales chart (all time)
-        fetch('/api/sales?startDate=2000-01-01')
-            .then(res => res.json())
+        api.getSales({ startDate: '2000-01-01' })
             .then(payload => {
-                const sales = payload.data || payload;
+                const sales = payload.data || [];
                 const productSales = {};
                 sales.forEach(s => {
                     const name = s.part_name || s.codigo_producto || `#${s.part_id}`;
@@ -84,9 +70,7 @@ export default function Dashboard({ onAlertClick }) {
                     productSales[name].quantity += s.quantity ?? 0;
                     productSales[name].revenue  += s.total_price ?? 0;
                 });
-                const topSales = Object.values(productSales)
-                    .sort((a, b) => b.quantity - a.quantity)
-                    .slice(0, 8);
+                const topSales = Object.values(productSales).sort((a, b) => b.quantity - a.quantity).slice(0, 8);
                 setSalesChart(topSales);
                 setSalesLoading(false);
             })

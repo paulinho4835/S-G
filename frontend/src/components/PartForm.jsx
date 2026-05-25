@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as api from '../lib/api';
 
 export default function PartForm({ onPartAdded }) {
     const [formData, setFormData] = useState({
@@ -23,20 +24,14 @@ export default function PartForm({ onPartAdded }) {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await fetch('/api/parts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+            await api.createPart(formData);
+            setFormData({
+                familia: '', codigo: '', codigo_producto: '', marca: '', mundial: '',
+                internal_measure: '', external_measure: '', height: '',
+                flange_measure: '', tope: '', stock: '',
+                aplicacion: '', cost_price: '', pv_geli: ''
             });
-            if (response.ok) {
-                setFormData({
-                    familia: '', codigo: '', codigo_producto: '', marca: '', mundial: '',
-                    internal_measure: '', external_measure: '', height: '',
-                    flange_measure: '', tope: '', stock: '',
-                    aplicacion: '', cost_price: '', pv_geli: ''
-                });
-                onPartAdded();
-            }
+            onPartAdded();
         } catch (error) {
             console.error('Error adding part:', error);
         } finally {

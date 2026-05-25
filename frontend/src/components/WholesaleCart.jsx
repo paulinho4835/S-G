@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from '../lib/toast';
+import * as api from '../lib/api';
 
 export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, onClearCart, onOrderComplete, onQuoteComplete }) {
     const [cliente, setCliente] = useState('');
@@ -34,41 +35,19 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
         if (!validate()) return;
         setQuoting(true);
         try {
-            const res = await fetch('/api/quotations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    cliente: cliente.trim(),
-                    invoice_type: invoiceType,
-                    notes,
-                    items: cartItems.map(i => ({ part_id: i.id, quantity: parseInt(i.quantity), unit_price: parseFloat(i.unit_price) }))
-                })
+            const data = await api.createQuotation({
+                cliente: cliente.trim(),
+                invoice_type: invoiceType,
+                notes,
+                items: cartItems.map(i => ({ part_id: i.id, quantity: parseInt(i.quantity), unit_price: parseFloat(i.unit_price) }))
             });
-            const data = await res.json();
-            if (data.message === 'success') {
-                toast.success(`📋 Cotización #${data.data.id} guardada — descargando PDFs...`);
-                const dlPdf = async (url, filename) => {
-                    const r = await fetch(url);
-                    const blob = await r.blob();
-                    const objUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = objUrl;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(objUrl);
-                };
-                const qId = String(data.data.id).padStart(4, '0');
-                await dlPdf(`/api/quotations/${data.data.id}/pdf`, `cotizacion-${qId}-cliente.pdf`);
-                await dlPdf(`/api/quotations/${data.data.id}/pdf?type=interno`, `cotizacion-${qId}-interno.pdf`);
-                onClearCart();
-                setCliente('');
-                setNotes('');
-                if (onQuoteComplete) onQuoteComplete();
-            } else {
-                toast.error('Error: ' + data.error);
-            }
+            toast.success(`📋 Cotización #${data.data.id} guardada — descargando PDFs...`);
+            await api.downloadQuotationPdf(data.data.id, 'cliente');
+            await api.downloadQuotationPdf(data.data.id, 'interno');
+            onClearCart();
+            setCliente('');
+            setNotes('');
+            if (onQuoteComplete) onQuoteComplete();
         } catch (err) {
             toast.error('Error de conexión');
         } finally {
@@ -80,30 +59,21 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
         if (!validate()) return;
         setSubmitting(true);
         try {
-            const res = await fetch('/api/wholesale', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    cliente: cliente.trim(),
-                    invoice_type: invoiceType,
-                    notes,
-                    items: cartItems.map(i => ({
-                        part_id:    i.id,
-                        quantity:   parseInt(i.quantity),
-                        unit_price: parseFloat(i.unit_price)
-                    }))
-                })
+            const data = await api.createWholesaleOrder({
+                cliente: cliente.trim(),
+                invoice_type: invoiceType,
+                notes,
+                items: cartItems.map(i => ({
+                    part_id:    i.id,
+                    quantity:   parseInt(i.quantity),
+                    unit_price: parseFloat(i.unit_price)
+                }))
             });
-            const data = await res.json();
-            if (data.message === 'success') {
-                toast.success(`✅ Venta Mayorista #${data.data.id} procesada — Total: Bs. ${subtotal.toFixed(2)}`);
-                onClearCart();
-                setCliente('');
-                setNotes('');
-                onOrderComplete();
-            } else {
-                toast.error('Error: ' + data.error);
-            }
+            toast.success(`✅ Venta Mayorista #${data.data.id} procesada — Total: Bs. ${subtotal.toFixed(2)}`);
+            onClearCart();
+            setCliente('');
+            setNotes('');
+            onOrderComplete();
         } catch (err) {
             toast.error('Error de conexión');
         } finally {

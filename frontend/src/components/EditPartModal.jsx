@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from '../lib/toast';
+import * as api from '../lib/api';
 
 export default function EditPartModal({ part, onClose, onConfirm }) {
     const [formData, setFormData] = useState({
@@ -27,17 +28,10 @@ export default function EditPartModal({ part, onClose, onConfirm }) {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await fetch(`/api/parts/${part.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-            const data = await res.json();
+            const data = await api.updatePart(part.id, formData);
             if (data.message === 'success') {
                 onConfirm();
                 onClose();
-            } else {
-                toast.error("Error: " + data.error);
             }
         } catch (error) {
             console.error("Error updating part:", error);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from '../lib/toast';
+import * as api from '../lib/api';
 
 export default function WholesaleHistory() {
     const [orders, setOrders]         = useState([]);
@@ -11,11 +12,7 @@ export default function WholesaleHistory() {
     const fetchOrders = async (clienteFilter = '') => {
         setLoading(true);
         try {
-            const url = clienteFilter
-                ? `/api/wholesale?cliente=${encodeURIComponent(clienteFilter)}`
-                : '/api/wholesale';
-            const res  = await fetch(url);
-            const data = await res.json();
+            const data = await api.getWholesaleOrders(clienteFilter ? { cliente: clienteFilter } : {});
             if (data.message === 'success') setOrders(data.data);
         } catch (err) {
             toast.error('Error cargando historial mayorista');
@@ -37,8 +34,7 @@ export default function WholesaleHistory() {
         if (orderDetail[orderId]) return; // ya cargado
 
         try {
-            const res  = await fetch(`/api/wholesale/${orderId}`);
-            const data = await res.json();
+            const data = await api.getWholesaleOrder(orderId);
             if (data.message === 'success') {
                 setOrderDetail(prev => ({ ...prev, [orderId]: data.data.items }));
             }
@@ -50,15 +46,10 @@ export default function WholesaleHistory() {
     const handleReturn = async (orderId) => {
         if (!confirm('¿Devolver este pedido? Se restaurará el stock de todos sus ítems.')) return;
         try {
-            const res  = await fetch(`/api/wholesale/${orderId}/return`, { method: 'POST' });
-            const data = await res.json();
-            if (data.message === 'success') {
-                toast.success('Pedido devuelto. Stock restaurado.');
-                fetchOrders(search.trim());
-                setOrderDetail(prev => { const n = { ...prev }; delete n[orderId]; return n; });
-            } else {
-                toast.error(data.error);
-            }
+            await api.returnWholesaleOrder(orderId);
+            toast.success('Pedido devuelto. Stock restaurado.');
+            fetchOrders(search.trim());
+            setOrderDetail(prev => { const n = { ...prev }; delete n[orderId]; return n; });
         } catch (err) {
             toast.error('Error al procesar devolución');
         }

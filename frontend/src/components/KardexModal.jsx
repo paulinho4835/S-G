@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as api from '../lib/api';
 
 const TYPE_CONFIG = {
     VENTA: { label: 'Venta', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', icon: '🔴' },
@@ -188,14 +189,11 @@ export default function KardexModal({ part, onClose }) {
         if (!part) return;
         setLoading(true);
         setActiveTab('commercial');
-        fetch(`/api/kardex/${part.id}`)
-
-            .then(r => r.json())
+        api.getKardex(part.id)
             .then(data => {
                 if (data.message === 'success') setMovements(data.data);
-                else setError(data.error || 'Error cargando kardex');
             })
-            .catch(() => setError('No se pudo conectar al servidor'))
+            .catch(err => setError(err.message || 'Error cargando kardex'))
             .finally(() => setLoading(false));
     }, [part]);
 
