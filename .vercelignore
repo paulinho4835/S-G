@@ -1,9 +1,9 @@
 node_modules
+**/node_modules
 backend
 dist_electron
 mobile
 scripts
-frontend/node_modules
 frontend/dist
 *.db
 *.sqlite

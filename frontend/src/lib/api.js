@@ -5,31 +5,42 @@ const TOLERANCE = 0.5;
 
 // ── PARTES ────────────────────────────────────────────────────────────────────
 export async function getParts({ search, internal, external, height } = {}) {
-    let query = supabase.from('parts').select('*');
+    const PAGE = 1000;
+    let all = [];
+    let from = 0;
 
-    if (search) {
-        query = query.or(
-            `name.ilike.%${search}%,codigo.ilike.%${search}%,codigo_producto.ilike.%${search}%,aplicacion.ilike.%${search}%`
-        );
-    }
-    if (internal) {
-        const v = parseFloat(internal);
-        query = query.gte('internal_measure', v - TOLERANCE).lte('internal_measure', v + TOLERANCE);
-    }
-    if (external) {
-        const v = parseFloat(external);
-        query = query.gte('external_measure', v - TOLERANCE).lte('external_measure', v + TOLERANCE);
-    }
-    if (height) {
-        const v = parseFloat(height);
-        query = query.gte('height', v - TOLERANCE).lte('height', v + TOLERANCE);
+    while (true) {
+        let query = supabase.from('parts').select('*');
+
+        if (search) {
+            query = query.or(
+                `name.ilike.%${search}%,codigo.ilike.%${search}%,codigo_producto.ilike.%${search}%,aplicacion.ilike.%${search}%`
+            );
+        }
+        if (internal) {
+            const v = parseFloat(internal);
+            query = query.gte('internal_measure', v - TOLERANCE).lte('internal_measure', v + TOLERANCE);
+        }
+        if (external) {
+            const v = parseFloat(external);
+            query = query.gte('external_measure', v - TOLERANCE).lte('external_measure', v + TOLERANCE);
+        }
+        if (height) {
+            const v = parseFloat(height);
+            query = query.gte('height', v - TOLERANCE).lte('height', v + TOLERANCE);
+        }
+
+        query = query.order('internal_measure').order('external_measure').order('height')
+                     .range(from, from + PAGE - 1);
+
+        const { data, error } = await query;
+        if (error) throw new Error(error.message);
+        all = all.concat(data);
+        if (data.length < PAGE) break;
+        from += PAGE;
     }
 
-    query = query.order('internal_measure').order('external_measure').order('height');
-
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    return { message: 'success', data };
+    return { message: 'success', data: all };
 }
 
 export async function getPartById(id) {

@@ -22,3 +22,5 @@ winCodeSign/
 *.rar
 *.exe
 ENTREGA_CLIENTE/
+
+.vercel
