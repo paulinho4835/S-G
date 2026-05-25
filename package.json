@@ -1,6 +1,6 @@
 {
     "name": "felipillo",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Premium Spare Parts Management System",
     "main": "main.js",
     "scripts": {
@@ -32,6 +32,7 @@
         "appId": "com.spareparts.store",
         "productName": "La casa de los retenes S y G",
         "asar": true,
+        "npmRebuild": false,
         "directories": {
             "output": "dist_electron"
         },
