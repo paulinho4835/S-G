@@ -1,4 +1,4 @@
-const sqlite3 = require('sqlite3').verbose();
+const sqlite3 = require('../backend/node_modules/sqlite3').verbose();
 const path = require('path');
 
 // Instalar dependencias primero: npm install @supabase/supabase-js sqlite3 dotenv
