@@ -8,7 +8,7 @@ import ConfirmDialog from './ConfirmDialog';
 import { toast } from '../lib/toast';
 
 
-export default function PartList({ refreshTrigger, onAddToCart }) {
+export default function PartList({ refreshTrigger, wholesaleMode, setWholesaleMode, onAddToWholesaleCart }) {
     const [parts, setParts] = useState([]);
     const [search, setSearch] = useState('');
     const [filters, setFilters] = useState({ internal: '', external: '', height: '' });
@@ -92,7 +92,8 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
             if (search) {
                 const searchLower = search.toLowerCase();
                 const matchesCode = part.codigo?.toLowerCase().includes(searchLower);
-                const matchesName = (part.name || part.codigo_producto)?.toLowerCase().includes(searchLower);
+                const matchesCodigoProducto = part.codigo_producto?.toLowerCase().includes(searchLower);
+                const matchesName = part.name?.toLowerCase().includes(searchLower);
                 const matchesBrand = part.marca?.toLowerCase().includes(searchLower);
                 const matchesApp = part.aplicacion?.toLowerCase().includes(searchLower);
                 const matchesFamily = part.familia?.toLowerCase().includes(searchLower);
@@ -105,9 +106,10 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
                 const matchesTope = String(part.tope || '').includes(searchLower);
 
                 if (
-                    !matchesCode && 
-                    !matchesName && 
-                    !matchesBrand && 
+                    !matchesCode &&
+                    !matchesCodigoProducto &&
+                    !matchesName &&
+                    !matchesBrand &&
                     !matchesApp && 
                     !matchesFamily && 
                     !matchesMundial &&
@@ -398,6 +400,38 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
                         <button onClick={handleReset} className="danger" style={{ padding: '0.5rem', fontSize: '1rem', backgroundColor: '#475569', border: 'none', minWidth: '40px', display: 'flex', justifyContent: 'center' }} title="Limpiar Filtros">🧹</button>
                         <button onClick={handleDownloadExcel} className="primary" style={{ backgroundColor: '#059669', padding: '0.5rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }} title="Descargar Excel">📥 Excel</button>
                     </div>
+
+                    {/* Switch Modo Mayorista */}
+                    <div
+                        onClick={() => setWholesaleMode && setWholesaleMode(m => !m)}
+                        title={wholesaleMode ? 'Desactivar Modo Mayorista' : 'Activar Modo Mayorista'}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            cursor: 'pointer', userSelect: 'none',
+                            padding: '0.4rem 0.8rem',
+                            borderRadius: '20px',
+                            border: `1px solid ${wholesaleMode ? '#f59e0b' : '#475569'}`,
+                            backgroundColor: wholesaleMode ? 'rgba(245,158,11,0.15)' : 'transparent',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: wholesaleMode ? '#f59e0b' : 'var(--text-secondary)' }}>
+                            🏪 Modo Mayorista
+                        </span>
+                        <div style={{
+                            width: '36px', height: '20px',
+                            backgroundColor: wholesaleMode ? '#f59e0b' : '#334155',
+                            borderRadius: '10px', position: 'relative', transition: 'background 0.2s'
+                        }}>
+                            <div style={{
+                                position: 'absolute', top: '3px',
+                                left: wholesaleMode ? '18px' : '3px',
+                                width: '14px', height: '14px',
+                                backgroundColor: 'white', borderRadius: '50%',
+                                transition: 'left 0.2s'
+                            }} />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -531,71 +565,74 @@ export default function PartList({ refreshTrigger, onAddToCart }) {
                                             {part.aplicacion || part.description || '-'}
                                         </td>
                                         <td style={{ padding: '8px', minWidth: '320px' }}>
-                                            <div style={{ display: 'flex', gap: '4px' }}>
-                                                {onAddToCart && (
+                                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                                {wholesaleMode ? (
                                                     <button
-                                                        onClick={() => onAddToCart(part)}
+                                                        onClick={() => onAddToWholesaleCart && onAddToWholesaleCart(part)}
                                                         disabled={(part.stock ?? 0) <= 0}
-                                                        style={{ backgroundColor: '#f59e0b', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', color: '#0f172a' }}
-                                                        title="Agregar al Carrito Mayorista"
+                                                        style={{
+                                                            fontSize: '0.85rem', padding: '6px 16px',
+                                                            backgroundColor: (part.stock ?? 0) <= 0 ? '#374151' : '#f59e0b',
+                                                            color: (part.stock ?? 0) <= 0 ? '#6b7280' : '#0f172a',
+                                                            border: 'none', borderRadius: '6px',
+                                                            cursor: (part.stock ?? 0) <= 0 ? 'not-allowed' : 'pointer',
+                                                            fontWeight: 'bold'
+                                                        }}
+                                                        title={(part.stock ?? 0) <= 0 ? 'Sin stock' : 'Agregar al carrito mayorista'}
                                                     >
-                                                        + Mayor
+                                                        🛒 + Mayor
                                                     </button>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => setSelectedPartForSale(part)}
+                                                            disabled={(part.stock ?? 0) <= 0}
+                                                            className="primary"
+                                                            style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+                                                        >
+                                                            Vender
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setSelectedPartForEdit(part)}
+                                                            style={{ backgroundColor: '#6366f1', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
+                                                        >
+                                                            Modificar
+                                                        </button>
+                                                        <button
+                                                            className="danger"
+                                                            style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+                                                            onClick={() => handleDelete(part.id)}
+                                                        >
+                                                            Eliminar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setStockMode('add'); setSelectedPartForRestock(part); }}
+                                                            style={{ backgroundColor: '#10b981', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
+                                                        >
+                                                            + Stock
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setStockMode('remove'); setSelectedPartForRestock(part); }}
+                                                            style={{ backgroundColor: '#f43f5e', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
+                                                        >
+                                                            - Stock
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setSelectedPartForKardex(part)}
+                                                            style={{ backgroundColor: '#7c3aed', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
+                                                            title="Ver historial completo de movimientos"
+                                                        >
+                                                            📋 Kardex
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleAddToOrder(part)}
+                                                            style={{ backgroundColor: '#eab308', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
+                                                            title="Agregar a la lista de Pedidos"
+                                                        >
+                                                            📦 Pedido
+                                                        </button>
+                                                    </>
                                                 )}
-                                                <button
-                                                    onClick={() => setSelectedPartForSale(part)}
-                                                    disabled={(part.stock ?? 0) <= 0}
-                                                    className="primary"
-                                                    style={{ fontSize: '0.8rem', padding: '6px 12px' }}
-                                                >
-                                                    Vender
-                                                </button>
-                                                <button
-                                                    onClick={() => setSelectedPartForEdit(part)}
-                                                    style={{ backgroundColor: '#6366f1', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
-                                                >
-                                                    Modificar
-                                                </button>
-
-                                                <button
-                                                    className="danger"
-                                                    style={{ fontSize: '0.8rem', padding: '6px 12px' }}
-                                                    onClick={() => handleDelete(part.id)}
-                                                >
-                                                    Eliminar
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        setStockMode('add');
-                                                        setSelectedPartForRestock(part);
-                                                    }}
-                                                    style={{ backgroundColor: '#10b981', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
-                                                >
-                                                    + Stock
-                                                </button>
-                                                <button
-                                                    onClick={() => {
-                                                        setStockMode('remove');
-                                                        setSelectedPartForRestock(part);
-                                                    }}
-                                                    style={{ backgroundColor: '#f43f5e', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
-                                                >
-                                                    - Stock
-                                                </button>
-                                                <button
-                                                    onClick={() => setSelectedPartForKardex(part)}
-                                                    style={{ backgroundColor: '#7c3aed', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
-                                                    title="Ver historial completo de movimientos"
-                                                >
-                                                    📋 Kardex
-                                                </button>
-                                                <button
-                                                    onClick={() => handleAddToOrder(part)}
-                                                    style={{ backgroundColor: '#eab308', fontSize: '0.8rem', padding: '6px 12px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: '500', color: 'white' }}
-                                                    title="Agregar a la lista de Pedidos"
-                                                >
-                                                    📦 Pedido
-                                                </button>
                                             </div>
                                         </td>
                                     </tr>
