@@ -548,6 +548,21 @@ app.post('/api/sales', (req, res) => {
     });
 });
 
+// PATCH invoice type
+app.patch('/api/sales/:id/invoice-type', (req, res) => {
+    const saleId = req.params.id;
+    const { invoice_type } = req.body;
+    const valid = ['FACTURA', 'FACTURA_QR', 'SIN_FACTURA', 'SIN_FACTURA_QR'];
+    if (!valid.includes(invoice_type)) {
+        return res.status(400).json({ error: 'Tipo de venta inválido' });
+    }
+    db.run('UPDATE sales SET invoice_type = ? WHERE id = ?', [invoice_type, saleId], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ error: 'Venta no encontrada' });
+        res.json({ message: 'success' });
+    });
+});
+
 // POST Return (Refund)
 app.post('/api/sales/:id/return', (req, res) => {
     const saleId = req.params.id;

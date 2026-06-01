@@ -223,6 +223,12 @@ export async function createSale({ part_id, quantity, unit_price, invoice_type }
     return { message: 'success', data };
 }
 
+export async function updateSaleInvoiceType(saleId, invoice_type) {
+    const { error } = await supabase.from('sales').update({ invoice_type }).eq('id', saleId);
+    if (error) throw new Error(error.message);
+    return { message: 'success' };
+}
+
 export async function returnSale(saleId) {
     const { data, error } = await supabase.rpc('fn_return_sale', { p_sale_id: saleId });
     if (error) throw new Error(error.message);

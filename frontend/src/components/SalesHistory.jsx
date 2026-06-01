@@ -12,6 +12,7 @@ function SalesHistory() {
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'QR_ONLY'
     const [loading, setLoading] = useState(false);
     const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm }
+    const [editingInvoice, setEditingInvoice] = useState(null); // saleId being edited
 
     const fetchSales = async (forceAll = false) => {
         setLoading(true);
@@ -41,6 +42,17 @@ function SalesHistory() {
     useEffect(() => {
         fetchSales();
     }, []);
+
+    const handleInvoiceTypeChange = async (saleId, newType) => {
+        try {
+            await api.updateSaleInvoiceType(saleId, newType);
+            toast.success('Tipo de venta actualizado');
+            setEditingInvoice(null);
+            fetchSales();
+        } catch (err) {
+            toast.error('Error: ' + err.message);
+        }
+    };
 
     const handleReturn = (saleId) => {
         setConfirmModal({
@@ -174,9 +186,31 @@ function SalesHistory() {
                                     <td style={{ padding: '8px' }}>{sale.unit_price ? `Bs. ${sale.unit_price}` : '-'}</td>
                                     <td style={{ padding: '8px' }}>{sale.total_price ? `Bs. ${sale.total_price}` : '-'}</td>
                                     <td style={{ padding: '8px' }}>
-                                        {sale.invoice_type === 'FACTURA' ? 'Con Factura' :
-                                         sale.invoice_type === 'FACTURA_QR' ? 'Con Factura QR' :
-                                         sale.invoice_type === 'SIN_FACTURA_QR' ? 'Sin Factura QR' : 'Sin Factura'}
+                                        {editingInvoice === sale.id ? (
+                                            <select
+                                                autoFocus
+                                                defaultValue={sale.invoice_type}
+                                                onChange={(e) => handleInvoiceTypeChange(sale.id, e.target.value)}
+                                                onBlur={() => setEditingInvoice(null)}
+                                                style={{ padding: '4px', colorScheme: 'dark', backgroundColor: '#1e293b', color: 'white', border: '1px solid #555', borderRadius: '4px' }}
+                                            >
+                                                <option value="SIN_FACTURA">Sin Factura</option>
+                                                <option value="SIN_FACTURA_QR">Sin Factura QR</option>
+                                                <option value="FACTURA">Con Factura</option>
+                                                <option value="FACTURA_QR">Con Factura QR</option>
+                                            </select>
+                                        ) : (
+                                            <span
+                                                onClick={() => !sale.refunded && setEditingInvoice(sale.id)}
+                                                style={{ cursor: sale.refunded ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                title={sale.refunded ? '' : 'Click para editar'}
+                                            >
+                                                {sale.invoice_type === 'FACTURA' ? 'Con Factura' :
+                                                 sale.invoice_type === 'FACTURA_QR' ? 'Con Factura QR' :
+                                                 sale.invoice_type === 'SIN_FACTURA_QR' ? 'Sin Factura QR' : 'Sin Factura'}
+                                                {!sale.refunded && <span style={{ fontSize: '0.7rem', color: '#888' }}>✏️</span>}
+                                            </span>
+                                        )}
                                     </td>
                                     <td style={{ padding: '8px' }}>
                                         {sale.refunded ?
