@@ -70,6 +70,31 @@ function SalesHistory() {
         });
     };
 
+    const handleDelete = (saleId) => {
+        setConfirmModal({
+            message: '¿Seguro que deseas ELIMINAR esta venta? El registro será borrado permanentemente y el stock restaurado.',
+            onConfirm: async () => {
+                setConfirmModal(null);
+                try {
+                    await api.deleteSale(saleId);
+                    toast.success('Venta eliminada correctamente');
+                    fetchSales();
+                } catch (err) {
+                    toast.error('Error: ' + err.message);
+                }
+            }
+        });
+    };
+
+    const formatDate = (dateStr) => {
+        if (!dateStr) return '-';
+        // Si Supabase devuelve sin info de zona horaria, asumimos UTC
+        const safe = dateStr.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(dateStr)
+            ? dateStr
+            : dateStr.replace(' ', 'T') + 'Z';
+        return new Date(safe).toLocaleString();
+    };
+
     const displayedSales = sales.filter(sale => {
         if (filterType === 'ALL') return true;
         if (filterType === 'QR') {
@@ -179,7 +204,7 @@ function SalesHistory() {
                         <tbody>
                             {displayedSales.map(sale => (
                                 <tr key={sale.id} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                    <td style={{ padding: '8px' }}>{new Date(sale.sale_date).toLocaleString()}</td>
+                                    <td style={{ padding: '8px' }}>{formatDate(sale.sale_date)}</td>
                                     <td style={{ padding: '8px' }}>{sale.codigo_producto || '-'}</td>
                                     <td style={{ padding: '8px' }}>{sale.codigo || '-'}</td>
                                     <td style={{ padding: '8px' }}>{sale.quantity}</td>
@@ -218,14 +243,23 @@ function SalesHistory() {
                                             <span style={{ color: 'green' }}>Vendido</span>
                                         }
                                     </td>
-                                    <td style={{ padding: '8px' }}>
+                                    <td style={{ padding: '8px', display: 'flex', gap: '4px' }}>
                                         {!sale.refunded && (
-                                            <button
-                                                onClick={() => handleReturn(sale.id)}
-                                                style={{ backgroundColor: '#ff4444', fontSize: '0.8rem', padding: '4px 8px' }}
-                                            >
-                                                Devolución
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={() => handleReturn(sale.id)}
+                                                    style={{ backgroundColor: '#ff4444', fontSize: '0.8rem', padding: '4px 8px' }}
+                                                >
+                                                    Devolución
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(sale.id)}
+                                                    style={{ backgroundColor: '#7f1d1d', fontSize: '0.8rem', padding: '4px 8px', border: '1px solid #ff4444' }}
+                                                    title="Eliminar venta permanentemente"
+                                                >
+                                                    Eliminar
+                                                </button>
+                                            </>
                                         )}
                                     </td>
                                 </tr>

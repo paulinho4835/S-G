@@ -180,7 +180,7 @@ export async function getSales({ date, startDate, endDate } = {}) {
         .select('*, parts(name, codigo, codigo_producto, aplicacion)')
         .order('sale_date');
 
-    const tz = 'America/Caracas';
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const today = new Date().toLocaleDateString('en-CA', { timeZone: tz });
 
     if (!date && !startDate && !endDate) {
@@ -231,6 +231,12 @@ export async function updateSaleInvoiceType(saleId, invoice_type) {
 
 export async function returnSale(saleId) {
     const { data, error } = await supabase.rpc('fn_return_sale', { p_sale_id: saleId });
+    if (error) throw new Error(error.message);
+    return { message: 'success', data };
+}
+
+export async function deleteSale(saleId) {
+    const { data, error } = await supabase.rpc('fn_delete_sale', { p_sale_id: saleId });
     if (error) throw new Error(error.message);
     return { message: 'success', data };
 }
