@@ -68,6 +68,8 @@ const upload = multer({ dest: uploadsDir });
 app.use(cors());
 app.use(bodyParser.json());
 
+const { requireLocalhost } = require('./middleware');
+
 // Absolute path resolution for packaged environment
 const staticPath = path.resolve(__dirname, '..', 'frontend', 'dist');
 const indexPath = path.join(staticPath, 'index.html');
@@ -80,7 +82,7 @@ app.get('/', (req, res) => {
     res.sendFile(indexPath, (err) => {
         if (err) {
             console.error('Root load failed:', err);
-            res.status(500).send(`<h3>Error de Carga</h3><p>No se pudo encontrar el archivo de la interfaz.</p><p>Ruta intentada: <code>${indexPath}</code></p>`);
+            res.status(500).send(`<h3>Error de Carga</h3><p>No se pudo cargar la interfaz. Verifica que el frontend esté compilado correctamente.</p>`);
         }
     });
 });
@@ -97,10 +99,9 @@ app.get('/api/diag', (req, res) => {
         res.json({
             status: 'online',
             database: {
-                path: dbPath,
                 records: err ? 0 : (row ? row.count : 0),
                 size_bytes: stats.size,
-                error: err ? err.message : null
+                error: err ? 'DB error' : null
             },
             env: {
                 NODE_ENV: process.env.NODE_ENV || 'production',
@@ -111,7 +112,7 @@ app.get('/api/diag', (req, res) => {
 });
 
 // Admin endpoint to force database restoration
-app.post('/api/admin/restore-db', (req, res) => {
+app.post('/api/admin/restore-db', requireLocalhost, (req, res) => {
     const userDataDbPath = process.env.DATABASE_PATH;
     const bundledDbPath = path.resolve(__dirname, 'parts.db');
 
@@ -616,6 +617,46 @@ app.post('/api/sales/:id/return', (req, res) => {
     });
 });
 
+// DELETE sale (eliminar registro y restaurar stock)
+app.delete('/api/sales/:id', (req, res) => {
+    const saleId = req.params.id;
+
+    db.get('SELECT * FROM sales WHERE id = ?', [saleId], (err, sale) => {
+        if (err || !sale) {
+            res.status(404).json({ "error": "Sale not found" });
+            return;
+        }
+        if (sale.refunded) {
+            res.status(400).json({ "error": "Cannot delete a refunded sale" });
+            return;
+        }
+
+        // Restore stock first
+        db.run('UPDATE parts SET stock = stock + ? WHERE id = ?', [sale.quantity, sale.part_id], (err) => {
+            if (err) {
+                res.status(500).json({ "error": "Failed to restore stock" });
+                return;
+            }
+            // Log movement
+            logMovement({
+                part_id: sale.part_id,
+                type: 'DEVOLUCION',
+                quantity: sale.quantity,
+                price: sale.unit_price,
+                concept: `Eliminación de Venta #${saleId}`
+            });
+            // Delete the sale record
+            db.run('DELETE FROM sales WHERE id = ?', [saleId], (err) => {
+                if (err) {
+                    res.status(500).json({ "error": "Failed to delete sale" });
+                    return;
+                }
+                res.json({ "message": "success", "data": { id: saleId, status: "deleted" } });
+            });
+        });
+    });
+});
+
 // POST Restock (Adjust Stock)
 app.post('/api/parts/:id/restock', (req, res) => {
     const partId = req.params.id;
@@ -825,7 +866,7 @@ app.get('/api/kardex/:part_id', (req, res) => {
 });
 
 // Endpoint to purge database (parts, sales and stock_movements)
-app.post('/api/database/reset', (req, res) => {
+app.post('/api/database/reset', requireLocalhost, (req, res) => {
     const { confirmation } = req.body;
     if (confirmation !== 'BORRAR TODO') {
         return res.status(400).json({ error: 'Código de confirmación incorrecto.' });
@@ -1324,7 +1365,7 @@ app.get('*', (req, res) => {
     res.sendFile(indexPath, (err) => {
         if (err) {
             console.error('Error sending index.html:', err);
-            res.status(500).send(`Error loading app: ${err.message}. Path attempted: ${indexPath}`);
+            res.status(500).send('Error cargando la aplicación. Verifica que el frontend esté compilado.');
         }
     });
 });
@@ -1332,7 +1373,7 @@ app.get('*', (req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
     console.error('Unhandled server error:', err);
-    res.status(500).send(`Server Error: ${err.message}`);
+    res.status(500).json({ error: 'Error interno del servidor.' });
 });
 
 app.listen(PORT, () => {

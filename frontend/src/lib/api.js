@@ -177,7 +177,7 @@ export async function getKardex(partId) {
 export async function getSales({ date, startDate, endDate } = {}) {
     let query = supabase
         .from('sales')
-        .select('*, parts(name, codigo, codigo_producto, aplicacion)')
+        .select('*, parts(name, codigo, codigo_producto, aplicacion, cost_price)')
         .order('sale_date');
 
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -202,6 +202,7 @@ export async function getSales({ date, startDate, endDate } = {}) {
         codigo:          s.parts?.codigo,
         codigo_producto: s.parts?.codigo_producto,
         aplicacion:      s.parts?.aplicacion,
+        cost_price:      s.parts?.cost_price,
     }));
     return { message: 'success', data: flattened };
 }
@@ -381,6 +382,28 @@ export async function downloadQuotationPdf(id, type = 'cliente') {
     a.download = `cotizacion-${id}-${type}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// ── STOCK MUERTO ──────────────────────────────────────────────────────────────
+export async function getDeadStock(days = 90) {
+    const { data: parts, error: pErr } = await supabase
+        .from('parts')
+        .select('id, codigo_producto, codigo, name, familia, marca, stock, cost_price, internal_measure, external_measure, height, flange_measure, aplicacion')
+        .gt('stock', 0);
+    if (pErr) throw new Error(pErr.message);
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toLocaleDateString('en-CA');
+
+    const { data: recent, error: sErr } = await supabase
+        .from('sales')
+        .select('part_id')
+        .gte('sale_date', cutoffStr);
+    if (sErr) throw new Error(sErr.message);
+
+    const active = new Set((recent || []).map(s => s.part_id));
+    return { message: 'success', data: (parts || []).filter(p => !active.has(p.id)) };
 }
 
 // ── BASE DE DATOS ─────────────────────────────────────────────────────────────

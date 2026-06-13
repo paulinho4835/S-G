@@ -369,67 +369,35 @@ export default function PartList({ refreshTrigger, wholesaleMode, setWholesaleMo
                             Limpiar todos
                         </button>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem', maxHeight: '250px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', maxHeight: '160px', overflowY: 'auto', paddingRight: '0.25rem' }}>
                         {recentParts.map(part => (
-                            <div key={`recent-${part.id}`} className="card" style={{ padding: '0.8rem', position: 'relative' }}>
-                                <button
-                                    onClick={() => toggleRecent(part)}
-                                    style={{ position: 'absolute', top: '5px', right: '5px', background: 'transparent', color: '#f87171', padding: '4px', zIndex: 10 }}
-                                    title="Quitar de anclados"
-                                >
-                                    ✕
-                                </button>
-                                <div style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--accent-color)' }}>{part.codigo_producto || part.name}</div>
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Cod: {part.codigo || '-'}</div>
-                                <div style={{ fontSize: '0.85rem', margin: '4px 0', minHeight: '1.2rem', fontStyle: 'italic' }}>{part.aplicacion || '-'}</div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                                    <span style={{ fontWeight: 'bold', color: '#10b981' }}>Bs. {parseFloat(part.cost_price || 0).toFixed(2)}</span>
-                                    <span style={{ fontSize: '0.85rem', color: (part.stock || 0) > 0 ? '#34d399' : '#f87171' }}>Stock: {part.stock || 0}</span>
-                                </div>
-                                <div style={{ display: 'flex', gap: '4px', marginTop: '10px' }}>
+                            <div key={`recent-${part.id}`} style={{
+                                display: 'flex', alignItems: 'center', gap: '6px',
+                                backgroundColor: 'rgba(30, 41, 59, 0.8)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '6px', padding: '5px 8px',
+                                fontSize: '0.8rem', whiteSpace: 'nowrap'
+                            }}>
+                                <span style={{ fontWeight: 'bold', color: 'var(--accent-color)' }}>{part.codigo_producto || part.name}</span>
+                                <span style={{ color: (part.stock || 0) > 0 ? '#34d399' : '#f87171' }}>×{part.stock || 0}</span>
+                                <span style={{ fontWeight: 'bold', color: '#10b981' }}>Bs.{parseFloat(part.cost_price || 0).toFixed(2)}</span>
+                                <div style={{ display: 'flex', gap: '3px', marginLeft: '2px' }}>
                                     {onAddToWholesaleCart && (
-                                        <button
-                                            onClick={() => onAddToWholesaleCart(part)}
-                                            disabled={(part.stock ?? 0) <= 0}
-                                            style={{ backgroundColor: '#f59e0b', fontSize: '0.75rem', padding: '4px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#0f172a', fontWeight: 'bold' }}
-                                            title="Agregar al Carrito Mayorista"
-                                        >
-                                            + Mayor
-                                        </button>
+                                        <button onClick={() => onAddToWholesaleCart(part)} disabled={(part.stock ?? 0) <= 0}
+                                            style={{ backgroundColor: '#f59e0b', fontSize: '0.7rem', padding: '2px 5px', border: 'none', borderRadius: '3px', cursor: 'pointer', color: '#0f172a', fontWeight: 'bold' }}
+                                            title="Agregar al Carrito Mayorista">+M</button>
                                     )}
-                                    <button
-                                        onClick={() => setSelectedPartForSale(part)}
-                                        disabled={(part.stock ?? 0) <= 0}
-                                        className="primary"
-                                        style={{ fontSize: '0.75rem', padding: '4px 8px', flex: 1 }}
-                                    >
-                                        Vender
-                                    </button>
-                                    <button
-                                        onClick={() => setSelectedPartForEdit(part)}
-                                        style={{ backgroundColor: '#6366f1', fontSize: '0.75rem', padding: '4px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
-                                    >
-                                        Modi.
-                                    </button>
-                                    <button
-                                        onClick={() => { setStockMode('add'); setSelectedPartForRestock(part); }}
-                                        style={{ backgroundColor: '#10b981', fontSize: '0.75rem', padding: '4px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
-                                    >
-                                        +
-                                    </button>
-                                    <button
-                                        onClick={() => { setStockMode('remove'); setSelectedPartForRestock(part); }}
-                                        style={{ backgroundColor: '#f43f5e', fontSize: '0.75rem', padding: '4px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
-                                    >
-                                        -
-                                    </button>
-                                    <button
-                                        onClick={() => handleAddToOrder(part)}
-                                        style={{ backgroundColor: '#eab308', fontSize: '0.75rem', padding: '4px 8px', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
-                                        title="Agregar a Pedidos"
-                                    >
-                                        📦
-                                    </button>
+                                    <button onClick={() => setSelectedPartForSale(part)} disabled={(part.stock ?? 0) <= 0}
+                                        className="primary" style={{ fontSize: '0.7rem', padding: '2px 5px' }}>Vender</button>
+                                    <button onClick={() => setSelectedPartForEdit(part)}
+                                        style={{ backgroundColor: '#6366f1', fontSize: '0.7rem', padding: '2px 5px', border: 'none', borderRadius: '3px', cursor: 'pointer', color: 'white' }}>Modi.</button>
+                                    <button onClick={() => { setStockMode('add'); setSelectedPartForRestock(part); }}
+                                        style={{ backgroundColor: '#10b981', fontSize: '0.7rem', padding: '2px 5px', border: 'none', borderRadius: '3px', cursor: 'pointer', color: 'white' }}>+</button>
+                                    <button onClick={() => { setStockMode('remove'); setSelectedPartForRestock(part); }}
+                                        style={{ backgroundColor: '#f43f5e', fontSize: '0.7rem', padding: '2px 5px', border: 'none', borderRadius: '3px', cursor: 'pointer', color: 'white' }}>-</button>
+                                    <button onClick={() => toggleRecent(part)}
+                                        style={{ background: 'transparent', color: '#f87171', fontSize: '0.7rem', padding: '2px 4px' }}
+                                        title="Quitar de anclados">✕</button>
                                 </div>
                             </div>
                         ))}
