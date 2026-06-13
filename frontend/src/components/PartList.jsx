@@ -8,7 +8,10 @@ import ConfirmDialog from './ConfirmDialog';
 import { toast } from '../lib/toast';
 
 
-export default function PartList({ refreshTrigger, wholesaleMode, setWholesaleMode, onAddToWholesaleCart }) {
+export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeFromProp, setWholesaleMode: setWholesaleModeFromProp, onAddToWholesaleCart }) {
+    const [localWholesaleMode, setLocalWholesaleMode] = useState(false);
+    const wholesaleMode = wholesaleModeFromProp !== undefined ? wholesaleModeFromProp : localWholesaleMode;
+    const setWholesaleMode = setWholesaleModeFromProp ?? setLocalWholesaleMode;
     const [parts, setParts] = useState([]);
     const [search, setSearch] = useState('');
     const [filters, setFilters] = useState({ internal: '', external: '', height: '' });

@@ -201,7 +201,7 @@ function App() {
                 </nav>
             </header>
 
-            <main style={{ transition: 'margin-right 0.3s', marginRight: (view === 'wholesale' && cartOpen) ? '430px' : 0 }}>
+            <main style={{ transition: 'margin-right 0.3s', marginRight: cartOpen && cartItems.length > 0 ? '430px' : 0 }}>
                 {view === 'register' && (
                     <>
                         <BulkUpload onUploadComplete={handlePartAdded} />
@@ -210,7 +210,7 @@ function App() {
                 )}
 
                 {view === 'products' && (
-                    <PartList refreshTrigger={refreshKey} />
+                    <PartList refreshTrigger={refreshKey} onAddToWholesaleCart={handleAddToCart} />
                 )}
 
                 {view === 'sales' && (
@@ -226,7 +226,7 @@ function App() {
                 )}
 
                 {view === 'wholesale' && (
-                    <PartList refreshTrigger={refreshKey} onAddToCart={handleAddToCart} />
+                    <PartList refreshTrigger={refreshKey} onAddToWholesaleCart={handleAddToCart} />
                 )}
 
                 {view === 'wholesale-history' && (
@@ -242,7 +242,7 @@ function App() {
                 )}
             </main>
 
-            {view === 'wholesale' && (
+            {cartItems.length > 0 && (
                 <>
                     <button
                         onClick={() => setCartOpen(o => !o)}
@@ -264,7 +264,7 @@ function App() {
                         }}
                         title="Abrir/Cerrar Carrito Mayorista"
                     >
-                        🛒{cartItems.length > 0 ? ` ${cartItems.length}` : ''}
+                        🛒 {cartItems.length}
                     </button>
                     {cartOpen && (
                         <>
