@@ -70,6 +70,10 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   font-size: 0.9375rem;
+  /* Cero con barra (slashed zero) para no confundir 0 con 8 en JetBrains Mono.
+     Las fuentes que no soportan "zero" lo ignoran. Es propiedad heredada,
+     así cubre tambien las medidas con font-family mono en estilos inline. */
+  font-feature-settings: "zero" 1;
 }
 
 #root {
