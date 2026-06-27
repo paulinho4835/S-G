@@ -457,15 +457,20 @@ tbody tr:hover {
 }
 
 .search-green {
-  background-color: #133820 !important;
-  color: #d4f8e0 !important;
-  border: 1.5px solid #1a6636 !important;
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border: 1.5px solid #cbd5e1 !important;
   border-radius: var(--radius-md) !important;
   font-family: var(--font-sans) !important;
 }
 
+.search-green:focus {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 2px rgba(212, 144, 10, 0.25) !important;
+}
+
 .search-green::placeholder {
-  color: rgba(255,255,255,0.55) !important;
+  color: #6b7280 !important;
   opacity: 1 !important;
 }
 

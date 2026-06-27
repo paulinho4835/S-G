@@ -471,8 +471,8 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                                     <th style={{ fontFamily: 'var(--font-mono)' }}>MI</th>
                                     <th style={{ fontFamily: 'var(--font-mono)' }}>ME</th>
                                     <th style={{ fontFamily: 'var(--font-mono)' }}>ALT</th>
-                                    <th style={{ fontFamily: 'var(--font-mono)' }}>PES</th>
-                                    <th style={{ fontFamily: 'var(--font-mono)' }}>TOP</th>
+                                    <th style={{ fontFamily: 'var(--font-mono)', color: '#f05252' }}>PES</th>
+                                    <th style={{ fontFamily: 'var(--font-mono)', color: '#f05252' }}>TOP</th>
                                     <th>Precio Base</th>
                                     <th>PV Gelipe</th>
                                     <th>Stock</th>
@@ -514,8 +514,8 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                                         <td style={{ fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>{part.internal_measure || '0'}</td>
                                         <td style={{ fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>{part.external_measure || '0'}</td>
                                         <td style={{ fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>{part.height || '0'}</td>
-                                        <td style={{ fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: '#a78bfa' }}>{part.flange_measure || '0'}</td>
-                                        <td style={{ fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: 'var(--info-color)' }}>{part.tope || '0'}</td>
+                                        <td style={{ fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: '#f05252' }}>{part.flange_measure || '0'}</td>
+                                        <td style={{ fontSize: '0.85rem', fontFamily: 'var(--font-mono)', color: '#f05252' }}>{part.tope || '0'}</td>
                                         <td style={{ fontWeight: 700, color: '#22c55e', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>
                                             {part.cost_price ? `Bs.${parseFloat(part.cost_price).toFixed(2)}` : '—'}
                                         </td>
