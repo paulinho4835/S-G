@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import Login from './components/Login';
 import WholesaleCart from './components/WholesaleCart';
+import ErrorBoundary from './components/ErrorBoundary';
+import OfflineBanner from './components/OfflineBanner';
 import { toast } from './lib/toast';
 import { supabase } from './lib/supabase';
 
@@ -103,6 +105,40 @@ function App() {
         };
     }, []);
 
+    // ── Atajos de teclado (velocidad de mostrador) ──
+    useEffect(() => {
+        const onKey = (e) => {
+            const tag = (e.target.tagName || '').toLowerCase();
+            const typing = tag === 'input' || tag === 'textarea' || e.target.isContentEditable;
+
+            // Esc: cierra carrito/menú o sale del campo activo
+            if (e.key === 'Escape') {
+                setCartOpen(false);
+                setMenuOpen(false);
+                if (typing) e.target.blur();
+                return;
+            }
+
+            if (typing) return; // no interceptar mientras se escribe
+
+            // "/" → ir a Productos y enfocar la búsqueda
+            if (e.key === '/') {
+                e.preventDefault();
+                setView('products');
+                setTimeout(() => window.dispatchEvent(new Event('focus-product-search')), 60);
+                return;
+            }
+
+            // Alt + 1..9 → cambiar de sección
+            if (e.altKey && /^[1-9]$/.test(e.key)) {
+                const item = NAV_ITEMS[parseInt(e.key, 10) - 1];
+                if (item) { e.preventDefault(); setView(item.view); }
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
+
     const scrollToTop = () => {
         document.getElementById('root')?.scrollTo({ top: 0, behavior: 'smooth' });
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -129,6 +165,7 @@ function App() {
 
     return (
         <>
+            <OfflineBanner />
             {/* ── Header ── */}
             <header className="app-header">
                 <div className="app-header-top">
@@ -159,11 +196,12 @@ function App() {
                 </div>
 
                 <nav className={`nav-tabs${menuOpen ? ' open' : ''}`}>
-                    {NAV_ITEMS.map(({ view: v, label, Icon, cls }) => (
+                    {NAV_ITEMS.map(({ view: v, label, Icon, cls }, i) => (
                         <button
                             key={v}
                             className={[view === v ? 'active' : '', cls || ''].filter(Boolean).join(' ')}
                             onClick={() => { setView(v); setMenuOpen(false); }}
+                            title={i < 9 ? `${label} (Alt+${i + 1})` : label}
                         >
                             <Icon size={14} strokeWidth={2} />
                             {label}
@@ -180,6 +218,7 @@ function App() {
                 className="app-main"
                 style={{ transition: 'margin-right 0.3s', marginRight: cartOpen && cartItems.length > 0 ? '430px' : 0 }}
             >
+                <ErrorBoundary key={view} onReset={() => setRefreshKey(k => k + 1)}>
                 <Suspense fallback={<div className="loading-container"><div className="spinner" /><p>Cargando módulo...</p></div>}>
                 {view === 'register' && (
                     <>
@@ -200,6 +239,7 @@ function App() {
                 {view === 'quotations' && <QuotationsList />}
                 {view === 'maintenance' && <DatabaseMaintenance />}
                 </Suspense>
+                </ErrorBoundary>
             </main>
 
             {/* ── Carrito mayorista ── */}

@@ -37,6 +37,17 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
     const internalInputRef = React.useRef(null);
     const headerRef = React.useRef(null);
     const loadMoreRef = React.useRef(null);
+    const searchInputRef = React.useRef(null);
+
+    // Atajo "/" desde App: enfoca y selecciona la búsqueda
+    useEffect(() => {
+        const focusSearch = () => {
+            const el = searchInputRef.current;
+            if (el) { el.focus(); el.select(); }
+        };
+        window.addEventListener('focus-product-search', focusSearch);
+        return () => window.removeEventListener('focus-product-search', focusSearch);
+    }, []);
     const [headerHeight, setHeaderHeight] = useState(200);
 
     useEffect(() => {
@@ -300,8 +311,9 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                     </h2>
 
                     <input
+                        ref={searchInputRef}
                         className="search-green"
-                        placeholder="Buscar código, marca o aplicación..."
+                        placeholder="Buscar código, marca o aplicación...  ( / )"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         style={{ width: '270px', padding: '0.45rem 0.7rem', fontSize: '0.84rem', margin: 0 }}
