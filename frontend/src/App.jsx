@@ -1,17 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import PartForm from './components/PartForm';
-import PartList from './components/PartList';
-import SalesHistory from './components/SalesHistory';
-import BulkUpload from './components/BulkUpload';
-import Dashboard from './components/Dashboard';
-import DatabaseMaintenance from './components/DatabaseMaintenance';
-import OrdersList from './components/OrdersList';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import {
+    FilePlus, Package, Receipt, LayoutDashboard, Truck,
+    Store, History, FileText, Wrench, LogOut,
+    ShoppingCart, ArrowUp, X, Menu
+} from 'lucide-react';
 import Login from './components/Login';
 import WholesaleCart from './components/WholesaleCart';
-import WholesaleHistory from './components/WholesaleHistory';
-import QuotationsList from './components/QuotationsList';
 import { toast } from './lib/toast';
 import { supabase } from './lib/supabase';
+
+// Vistas con carga diferida (code-splitting) — solo se descargan al abrirlas.
+const PartForm           = lazy(() => import('./components/PartForm'));
+const PartList           = lazy(() => import('./components/PartList'));
+const SalesHistory       = lazy(() => import('./components/SalesHistory'));
+const BulkUpload         = lazy(() => import('./components/BulkUpload'));
+const Dashboard          = lazy(() => import('./components/Dashboard'));
+const DatabaseMaintenance = lazy(() => import('./components/DatabaseMaintenance'));
+const OrdersList         = lazy(() => import('./components/OrdersList'));
+const WholesaleHistory   = lazy(() => import('./components/WholesaleHistory'));
+const QuotationsList     = lazy(() => import('./components/QuotationsList'));
+
+const NAV_ITEMS = [
+    { view: 'register',          label: 'Registrar',      Icon: FilePlus },
+    { view: 'products',          label: 'Productos',      Icon: Package },
+    { view: 'sales',             label: 'Ventas',         Icon: Receipt },
+    { view: 'dashboard',         label: 'Dashboard',      Icon: LayoutDashboard },
+    { view: 'orders',            label: 'Pedidos',        Icon: Truck },
+    { view: 'wholesale',         label: 'Mayorista',      Icon: Store,    cls: 'nav-amber' },
+    { view: 'wholesale-history', label: 'Hist. Mayor',    Icon: History },
+    { view: 'quotations',        label: 'Cotizaciones',   Icon: FileText, cls: 'nav-blue' },
+    { view: 'maintenance',       label: 'Mantenimiento',  Icon: Wrench },
+];
 
 function App() {
     const [refreshKey, setRefreshKey] = useState(0);
@@ -19,6 +38,9 @@ function App() {
     const [showScrollBtn, setShowScrollBtn] = useState(false);
     const [cartItems, setCartItems] = useState([]);
     const [cartOpen, setCartOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [authLoading, setAuthLoading] = useState(true);
 
     const handleAddToCart = (part) => {
         const cartKey = `${part.id}-${Date.now()}`;
@@ -33,7 +55,7 @@ function App() {
             quantity: 1,
             unit_price: part.pv_geli || part.cost_price || 0
         }]);
-        toast.success(`✅ "${part.codigo_producto || part.name}" agregado al carrito mayorista`);
+        toast.success(`"${part.codigo_producto || part.name}" agregado al carrito mayorista`);
         setCartOpen(true);
     };
 
@@ -55,8 +77,6 @@ function App() {
         setCartOpen(false);
         setView('quotations');
     };
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [authLoading, setAuthLoading] = useState(true);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -72,33 +92,19 @@ function App() {
     useEffect(() => {
         const rootEl = document.getElementById('root');
         const handleScroll = () => {
-            if (rootEl && rootEl.scrollTop > 200) {
-                setShowScrollBtn(true);
-            } else if (window.scrollY > 200) {
-                setShowScrollBtn(true);
-            } else {
-                setShowScrollBtn(false);
-            }
+            const scrolled = (rootEl?.scrollTop ?? 0) > 200 || window.scrollY > 200;
+            setShowScrollBtn(scrolled);
         };
-
-        if (rootEl) {
-            rootEl.addEventListener('scroll', handleScroll);
-        }
+        rootEl?.addEventListener('scroll', handleScroll);
         window.addEventListener('scroll', handleScroll);
-
         return () => {
-            if (rootEl) {
-                rootEl.removeEventListener('scroll', handleScroll);
-            }
+            rootEl?.removeEventListener('scroll', handleScroll);
             window.removeEventListener('scroll', handleScroll);
         };
     }, []);
 
     const scrollToTop = () => {
-        const rootEl = document.getElementById('root');
-        if (rootEl) {
-            rootEl.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        document.getElementById('root')?.scrollTo({ top: 0, behavior: 'smooth' });
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -108,218 +114,173 @@ function App() {
         setView('products');
     };
 
-    const handleAlertClick = () => {
-        setView('products');
-    };
+    const handleAlertClick = () => setView('products');
+    const handleLogin = () => setIsAuthenticated(true);
 
-    const handleLogin = () => {
-        setIsAuthenticated(true);
-    };
+    if (authLoading) {
+        return (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#4e6a88', fontFamily: 'DM Sans, system-ui, sans-serif' }}>
+                Cargando...
+            </div>
+        );
+    }
 
-    if (authLoading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: '#94a3b8' }}>Cargando...</div>;
     if (!isAuthenticated) return <Login onLogin={handleLogin} />;
 
     return (
         <>
+            {/* ── Header ── */}
             <header className="app-header">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '1rem' }}>
-                    <h1 style={{ margin: 0 }}>La casa de los retenes S&G</h1>
-                    <button 
-                        onClick={() => {
-                            supabase.auth.signOut();
-                            setIsAuthenticated(false);
-                        }}
-                        style={{
-                            background: 'transparent',
-                            border: '1px solid #ef4444',
-                            color: '#ef4444',
-                            padding: '4px 12px',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Cerrar Sesión
-                    </button>
+                <div className="app-header-top">
+                    <div className="app-brand">
+                        <h1>La casa de los retenes S&amp;G</h1>
+                    </div>
+                    <div className="app-header-actions">
+                        <button
+                            className="nav-toggle"
+                            onClick={() => setMenuOpen(o => !o)}
+                            title={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+                            aria-label="Menú"
+                        >
+                            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+                            {!menuOpen && cartItems.length > 0 && <span className="nav-badge">{cartItems.length}</span>}
+                        </button>
+                        <button
+                            className="btn-logout"
+                            onClick={() => {
+                                supabase.auth.signOut();
+                                setIsAuthenticated(false);
+                            }}
+                        >
+                            <LogOut size={13} />
+                            Salir
+                        </button>
+                    </div>
                 </div>
-                <nav className="nav-tabs">
-                    <button
-                        className={view === 'register' ? 'active' : ''}
-                        onClick={() => setView('register')}
-                    >
-                        Registrar
-                    </button>
-                    <button
-                        className={view === 'products' ? 'active' : ''}
-                        onClick={() => setView('products')}
-                    >
-                        Productos
-                    </button>
-                    <button
-                        className={view === 'sales' ? 'active' : ''}
-                        onClick={() => setView('sales')}
-                    >
-                        Ventas del dia
-                    </button>
-                    <button
-                        className={view === 'dashboard' ? 'active' : ''}
-                        onClick={() => setView('dashboard')}
-                    >
-                        Dashboard
-                    </button>
-                    <button
-                        className={view === 'orders' ? 'active' : ''}
-                        onClick={() => setView('orders')}
-                    >
-                        Pedidos
-                    </button>
-                    <button
-                        className={view === 'wholesale' ? 'active' : ''}
-                        onClick={() => setView('wholesale')}
-                        style={{ color: view === 'wholesale' ? undefined : '#f59e0b' }}
-                    >
-                        🛒 Mayorista{cartItems.length > 0 ? ` (${cartItems.length})` : ''}
-                    </button>
-                    <button
-                        className={view === 'wholesale-history' ? 'active' : ''}
-                        onClick={() => setView('wholesale-history')}
-                    >
-                        Hist. Mayorista
-                    </button>
-                    <button
-                        className={view === 'quotations' ? 'active' : ''}
-                        onClick={() => setView('quotations')}
-                        style={{ color: view === 'quotations' ? undefined : '#3b82f6' }}
-                    >
-                        📋 Cotizaciones
-                    </button>
-                    <button
-                        className={view === 'maintenance' ? 'active' : ''}
-                        onClick={() => setView('maintenance')}
-                    >
-                        Mantenimiento
-                    </button>
+
+                <nav className={`nav-tabs${menuOpen ? ' open' : ''}`}>
+                    {NAV_ITEMS.map(({ view: v, label, Icon, cls }) => (
+                        <button
+                            key={v}
+                            className={[view === v ? 'active' : '', cls || ''].filter(Boolean).join(' ')}
+                            onClick={() => { setView(v); setMenuOpen(false); }}
+                        >
+                            <Icon size={14} strokeWidth={2} />
+                            {label}
+                            {v === 'wholesale' && cartItems.length > 0 && (
+                                <span className="nav-badge">{cartItems.length}</span>
+                            )}
+                        </button>
+                    ))}
                 </nav>
             </header>
 
-            <main style={{ transition: 'margin-right 0.3s', marginRight: cartOpen && cartItems.length > 0 ? '430px' : 0 }}>
+            {/* ── Contenido principal ── */}
+            <main
+                className="app-main"
+                style={{ transition: 'margin-right 0.3s', marginRight: cartOpen && cartItems.length > 0 ? '430px' : 0 }}
+            >
+                <Suspense fallback={<div className="loading-container"><div className="spinner" /><p>Cargando módulo...</p></div>}>
                 {view === 'register' && (
                     <>
                         <BulkUpload onUploadComplete={handlePartAdded} />
                         <PartForm onPartAdded={handlePartAdded} />
                     </>
                 )}
-
                 {view === 'products' && (
                     <PartList refreshTrigger={refreshKey} onAddToWholesaleCart={handleAddToCart} />
                 )}
-
-                {view === 'sales' && (
-                    <SalesHistory />
-                )}
-
-                {view === 'dashboard' && (
-                    <Dashboard onAlertClick={handleAlertClick} />
-                )}
-
-                {view === 'orders' && (
-                    <OrdersList />
-                )}
-
+                {view === 'sales' && <SalesHistory />}
+                {view === 'dashboard' && <Dashboard onAlertClick={handleAlertClick} />}
+                {view === 'orders' && <OrdersList />}
                 {view === 'wholesale' && (
                     <PartList refreshTrigger={refreshKey} onAddToWholesaleCart={handleAddToCart} />
                 )}
-
-                {view === 'wholesale-history' && (
-                    <WholesaleHistory />
-                )}
-
-                {view === 'quotations' && (
-                    <QuotationsList />
-                )}
-
-                {view === 'maintenance' && (
-                    <DatabaseMaintenance />
-                )}
+                {view === 'wholesale-history' && <WholesaleHistory />}
+                {view === 'quotations' && <QuotationsList />}
+                {view === 'maintenance' && <DatabaseMaintenance />}
+                </Suspense>
             </main>
 
+            {/* ── Carrito mayorista ── */}
             {cartItems.length > 0 && (
                 <>
                     <button
                         onClick={() => setCartOpen(o => !o)}
-                        style={{
-                            position: 'fixed',
-                            bottom: '20px',
-                            right: '20px',
-                            zIndex: 300,
-                            width: '64px',
-                            height: '64px',
-                            borderRadius: '50%',
-                            backgroundColor: '#f59e0b',
-                            color: '#0f172a',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '1.5rem',
-                            fontWeight: 'bold',
-                            boxShadow: '0 6px 20px rgba(245,158,11,0.5)'
-                        }}
+                        className="fab"
                         title="Abrir/Cerrar Carrito Mayorista"
+                        style={{ bottom: '2rem', right: '2rem' }}
                     >
-                        🛒 {cartItems.length}
-                    </button>
-                    {cartOpen && (
-                        <>
-                            <div style={{
-                                position: 'fixed',
-                                top: 0,
-                                right: 0,
-                                width: '420px',
-                                maxWidth: '95vw',
-                                height: '100vh',
-                                zIndex: 260,
-                                boxShadow: '-8px 0 24px rgba(0,0,0,0.5)',
-                                backgroundColor: 'var(--card-bg)',
-                                display: 'flex',
-                                flexDirection: 'column'
+                        <ShoppingCart size={22} strokeWidth={2.2} />
+                        {cartItems.length > 0 && (
+                            <span style={{
+                                position: 'absolute', top: '-4px', right: '-4px',
+                                background: '#fff', color: '#07111e',
+                                fontSize: '0.62rem', fontWeight: '800',
+                                width: '18px', height: '18px',
+                                borderRadius: '50%', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center',
+                                fontFamily: 'JetBrains Mono, monospace'
                             }}>
-                                <button
-                                    onClick={() => setCartOpen(false)}
-                                    style={{
-                                        position: 'absolute',
-                                        top: '8px',
-                                        right: '8px',
-                                        zIndex: 1,
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: '#f87171',
-                                        fontSize: '1.2rem',
-                                        cursor: 'pointer',
-                                        padding: '4px 10px'
-                                    }}
-                                    title="Cerrar"
-                                >
-                                    ✕
-                                </button>
-                                <WholesaleCart
-                                    cartItems={cartItems}
-                                    onUpdateItem={handleUpdateCartItem}
-                                    onRemoveItem={handleRemoveCartItem}
-                                    onClearCart={handleClearCart}
-                                    onOrderComplete={handleWholesaleComplete}
-                                    onQuoteComplete={handleQuoteComplete}
-                                />
-                            </div>
-                        </>
+                                {cartItems.length}
+                            </span>
+                        )}
+                    </button>
+
+                    {cartOpen && (
+                        <div style={{
+                            position: 'fixed',
+                            top: 0, right: 0,
+                            width: '420px',
+                            maxWidth: '95vw',
+                            height: '100vh',
+                            zIndex: 260,
+                            boxShadow: '-8px 0 32px rgba(0,0,0,0.55)',
+                            backgroundColor: 'var(--card-bg)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            borderLeft: '1px solid var(--border-color)'
+                        }}>
+                            <button
+                                onClick={() => setCartOpen(false)}
+                                style={{
+                                    position: 'absolute',
+                                    top: '10px', right: '10px',
+                                    zIndex: 1,
+                                    background: 'transparent',
+                                    border: '1px solid var(--border-color)',
+                                    color: 'var(--text-secondary)',
+                                    borderRadius: '6px',
+                                    width: '30px', height: '30px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    padding: 0
+                                }}
+                                title="Cerrar"
+                            >
+                                <X size={15} />
+                            </button>
+                            <WholesaleCart
+                                cartItems={cartItems}
+                                onUpdateItem={handleUpdateCartItem}
+                                onRemoveItem={handleRemoveCartItem}
+                                onClearCart={handleClearCart}
+                                onOrderComplete={handleWholesaleComplete}
+                                onQuoteComplete={handleQuoteComplete}
+                            />
+                        </div>
                     )}
                 </>
             )}
 
+            {/* ── Scroll to top ── */}
             {showScrollBtn && (
                 <button
                     onClick={scrollToTop}
                     className="scroll-to-top-btn"
-                    title="Volver Arriba"
+                    title="Volver arriba"
                 >
-                    ⬆️
+                    <ArrowUp size={18} />
                 </button>
             )}
         </>

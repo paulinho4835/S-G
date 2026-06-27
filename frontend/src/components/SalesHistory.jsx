@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Pencil } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
+import { SkeletonTable } from './Skeleton';
 import { toast } from '../lib/toast';
 import * as api from '../lib/api';
 
@@ -185,7 +187,7 @@ function SalesHistory() {
                 </button>
             </div>
 
-            {loading ? <p>Cargando...</p> : (
+            {loading ? <SkeletonTable rows={8} cols={6} /> : (
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
@@ -233,7 +235,7 @@ function SalesHistory() {
                                                 {sale.invoice_type === 'FACTURA' ? 'Con Factura' :
                                                  sale.invoice_type === 'FACTURA_QR' ? 'Con Factura QR' :
                                                  sale.invoice_type === 'SIN_FACTURA_QR' ? 'Sin Factura QR' : 'Sin Factura'}
-                                                {!sale.refunded && <span style={{ fontSize: '0.7rem', color: '#888' }}>✏️</span>}
+                                                {!sale.refunded && <Pencil size={11} color="#888" />}
                                             </span>
                                         )}
                                     </td>

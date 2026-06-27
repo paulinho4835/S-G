@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 /**
  * Modal de confirmación personalizado — reemplaza window.confirm().
@@ -29,7 +30,9 @@ export default function ConfirmDialog({ message, onConfirm, onCancel, danger = t
                 textAlign: 'center',
                 boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
             }}>
-                <div style={{ fontSize: '2.2rem', marginBottom: '0.75rem' }}>⚠️</div>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                    <AlertTriangle size={38} color="#f59e0b" strokeWidth={1.5} />
+                </div>
                 <p style={{ color: '#f8fafc', fontSize: '0.97rem', lineHeight: '1.6', marginBottom: '1.75rem', margin: '0 0 1.75rem' }}>
                     {message}
                 </p>

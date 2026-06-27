@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import * as XLSX from 'xlsx';
 
 const TOLERANCE = 0.5;
 
@@ -102,7 +101,8 @@ export async function restock(partId, quantity) {
     return { message: 'success', data };
 }
 
-export function exportPartsExcel(parts) {
+export async function exportPartsExcel(parts) {
+    const XLSX = await import('xlsx');
     const excelData = parts.map(p => ({
         'FAMILIA':       p.familia || '',
         'CODIGO_PRODUCT': p.codigo_producto || p.name || '',
@@ -130,6 +130,7 @@ export async function bulkUploadParts(file) {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
+                const XLSX = await import('xlsx');
                 const workbook = XLSX.read(e.target.result, { type: 'array' });
                 const ws = workbook.Sheets[workbook.SheetNames[0]];
                 const rawRows = XLSX.utils.sheet_to_json(ws);

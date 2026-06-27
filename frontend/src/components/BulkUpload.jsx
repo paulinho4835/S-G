@@ -17,11 +17,11 @@ export default function BulkUpload({ onUploadComplete }) {
         setMessage('');
         try {
             const result = await api.bulkUploadParts(file);
-            setMessage(`✅ Carga completada: ${result.imported} nuevos, ${result.updated || 0} actualizados.`);
+            setMessage(`ok:Carga completada: ${result.imported} nuevos, ${result.updated || 0} actualizados.`);
             setFile(null);
             onUploadComplete();
         } catch (err) {
-            setMessage(`❌ Error: ${err.message}`);
+            setMessage(`err:Error: ${err.message}`);
         } finally {
             setUploading(false);
         }
@@ -54,10 +54,10 @@ export default function BulkUpload({ onUploadComplete }) {
                     marginTop: '1rem',
                     padding: '0.75rem',
                     borderRadius: '4px',
-                    backgroundColor: message.startsWith('✅') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                    color: message.startsWith('✅') ? '#34d399' : '#f87171'
+                    backgroundColor: message.startsWith('ok:') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                    color: message.startsWith('ok:') ? '#34d399' : '#f87171'
                 }}>
-                    {message}
+                    {message.replace(/^(ok:|err:)/, '')}
                 </div>
             )}
         </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ShoppingCart, X, Loader2, FileText, CheckCircle, Trash2 } from 'lucide-react';
 import { toast } from '../lib/toast';
 import * as api from '../lib/api';
 
@@ -25,7 +26,7 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
             return cost > 0 && price < cost;
         });
         if (underCostItem) {
-            toast.error(`❌ "${underCostItem.codigo_producto || underCostItem.name}" no puede venderse bajo costo base Bs. ${parseFloat(underCostItem.cost_price).toFixed(2)}.`);
+            toast.error(`"${underCostItem.codigo_producto || underCostItem.name}" no puede venderse bajo costo base Bs. ${parseFloat(underCostItem.cost_price).toFixed(2)}.`);
             return false;
         }
         return true;
@@ -41,7 +42,7 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                 notes,
                 items: cartItems.map(i => ({ part_id: i.id, quantity: parseInt(i.quantity), unit_price: parseFloat(i.unit_price) }))
             });
-            toast.success(`📋 Cotización #${data.data.id} guardada`);
+            toast.success(`Cotización #${data.data.id} guardada`);
             onClearCart();
             setCliente('');
             setNotes('');
@@ -75,7 +76,7 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                     unit_price: parseFloat(i.unit_price)
                 }))
             });
-            toast.success(`✅ Venta Mayorista #${data.data.id} procesada — Total: Bs. ${subtotal.toFixed(2)}`);
+            toast.success(`Venta Mayorista #${data.data.id} procesada — Total: Bs. ${subtotal.toFixed(2)}`);
             onClearCart();
             setCliente('');
             setNotes('');
@@ -91,10 +92,10 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
     if (cartItems.length === 0) {
         return (
             <div style={styles.emptyState}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🛒</div>
+                <ShoppingCart size={40} strokeWidth={1.2} color="var(--text-secondary)" style={{ marginBottom: '0.5rem' }} />
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center' }}>
                     El carrito está vacío.<br />
-                    Hacé clic en <strong style={{ color: '#f59e0b' }}>+ Mayor</strong> en cualquier producto.
+                    Haz clic en <strong style={{ color: '#f59e0b' }}>+ Mayor</strong> en cualquier producto.
                 </p>
             </div>
         );
@@ -104,8 +105,8 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
         <div style={styles.container}>
             {/* Header */}
             <div style={styles.header}>
-                <span style={{ fontWeight: 'bold', color: '#f59e0b', fontSize: '1rem' }}>
-                    🛒 Carrito Mayorista
+                <span style={{ fontWeight: 'bold', color: '#f59e0b', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ShoppingCart size={16} /> Carrito Mayorista
                 </span>
                 <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
                     {cartItems.length} ítem(s)
@@ -123,10 +124,10 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                 />
                 <label style={{ ...styles.label, marginTop: '0.5rem' }}>Comprobante</label>
                 <select value={invoiceType} onChange={e => setInvoiceType(e.target.value)} style={styles.input}>
-                    <option value="MAYOR_SIN_FACTURA">🏪 Venta x Mayor Sin Factura</option>
-                    <option value="MAYOR_SIN_FACTURA_QR">📱 Venta x Mayor Sin Factura QR</option>
-                    <option value="MAYOR_FACTURA">🧳 Venta x Mayor Factura</option>
-                    <option value="MAYOR_FACTURA_QR">📱 Venta x Mayor Factura QR</option>
+                    <option value="MAYOR_SIN_FACTURA">Venta x Mayor Sin Factura</option>
+                    <option value="MAYOR_SIN_FACTURA_QR">Venta x Mayor Sin Factura QR</option>
+                    <option value="MAYOR_FACTURA">Venta x Mayor Factura</option>
+                    <option value="MAYOR_FACTURA_QR">Venta x Mayor Factura QR</option>
                 </select>
             </div>
 
@@ -197,7 +198,7 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                                     style={styles.removeBtn}
                                     title="Quitar del carrito"
                                 >
-                                    ✕
+                                    <X size={14} />
                                 </button>
                             </div>
                         </div>
@@ -237,10 +238,11 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                         borderRadius: '6px',
                         cursor: (quoting || submitting) ? 'not-allowed' : 'pointer',
                         fontSize: '0.9rem',
-                        marginBottom: '0.5rem'
+                        marginBottom: '0.5rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                     }}
                 >
-                    {quoting ? '⏳ Generando PDF...' : '📋 Realizar Cotización'}
+                    {quoting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Generando PDF...</> : <><FileText size={14} /> Realizar Cotización</>}
                 </button>
                 <button
                     onClick={handleConfirm}
@@ -255,10 +257,11 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                         borderRadius: '6px',
                         cursor: (submitting || quoting) ? 'not-allowed' : 'pointer',
                         fontSize: '0.95rem',
-                        marginBottom: '0.5rem'
+                        marginBottom: '0.5rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                     }}
                 >
-                    {submitting ? '⏳ Procesando...' : '✅ Confirmar Venta Mayorista'}
+                    {submitting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Procesando...</> : <><CheckCircle size={14} /> Confirmar Venta Mayorista</>}
                 </button>
                 <button
                     onClick={onClearCart}
@@ -270,10 +273,11 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                         border: '1px solid #f87171',
                         borderRadius: '6px',
                         cursor: 'pointer',
-                        fontSize: '0.8rem'
+                        fontSize: '0.8rem',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px'
                     }}
                 >
-                    🗑 Vaciar Carrito
+                    <Trash2 size={13} /> Vaciar Carrito
                 </button>
             </div>
         </div>

@@ -8,6 +8,12 @@ import {
     groupByDay, groupByWeek, groupByMonth, groupByYear, groupByCode, groupByHour,
     calcTrend, calcMargin, getPresetRange, formatCurrency
 } from '../lib/salesUtils';
+import {
+    TrendingUp, TrendingDown, DollarSign, Package, FileText, Download,
+    AlertCircle, AlertTriangle, Archive, CheckCircle2, Calendar,
+    Clock, Award, Tag, BarChart2
+} from 'lucide-react';
+import { SkeletonBar } from './Skeleton';
 import './dashboard.css';
 
 const PERIOD_LABELS = { today: 'Hoy', week: 'Esta Semana', month: 'Este Mes' };
@@ -242,7 +248,7 @@ export default function Dashboard({ onAlertClick }) {
             ══════════════════════════════════════════════════════════════ */}
             <div className="dashboard-chart-section" style={{ padding: '1.25rem 1.5rem', borderTop: '3px solid #22c55e' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
-                    <div className="dashboard-chart-title" style={{ marginBottom: 0 }}>📈 Resumen de Ventas</div>
+                    <div className="dashboard-chart-title" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '6px' }}><TrendingUp size={16} color="#22c55e" /> Resumen de Ventas</div>
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
                         {['today', 'week', 'month'].map(p => (
                             <button key={p} style={tabBtn(p, '#3b82f6')} onClick={() => setSalesPeriod(p)}>
@@ -252,16 +258,25 @@ export default function Dashboard({ onAlertClick }) {
                     </div>
                 </div>
                 {summaryLoading ? (
-                    <div style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>Cargando...</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                        {[0, 1, 2].map(i => (
+                            <div key={i} className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <SkeletonBar height={12} width="55%" />
+                                <SkeletonBar height={26} width="80%" />
+                            </div>
+                        ))}
+                    </div>
                 ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                         {[
-                            { label: 'Ingresos Totales',  value: formatCurrency(salesSummary.total_bs), color: '#22c55e', rgb: '34,197,94',   icon: '💰' },
-                            { label: 'Unidades Vendidas', value: `${salesSummary.units_sold} uds.`,     color: '#38bdf8', rgb: '56,189,248',  icon: '📦' },
-                            { label: 'Transacciones',     value: salesSummary.transactions,             color: '#a78bfa', rgb: '167,139,250', icon: '🧾' },
-                        ].map(({ label, value, color, rgb, icon }) => (
+                            { label: 'Ingresos Totales',  value: formatCurrency(salesSummary.total_bs), color: '#22c55e', rgb: '34,197,94',   Icon: DollarSign },
+                            { label: 'Unidades Vendidas', value: `${salesSummary.units_sold} uds.`,     color: '#3590d0', rgb: '53,144,208',  Icon: Package },
+                            { label: 'Transacciones',     value: salesSummary.transactions,             color: '#a78bfa', rgb: '167,139,250', Icon: FileText },
+                        ].map(({ label, value, color, rgb, Icon }) => (
                             <div key={label} style={{ background: `rgba(${rgb},0.1)`, border: `1px solid rgba(${rgb},0.3)`, borderRadius: '0.75rem', padding: '1rem 1.25rem', textAlign: 'center' }}>
-                                <div style={{ fontSize: '1.6rem', marginBottom: '0.25rem' }}>{icon}</div>
+                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.35rem' }}>
+                                    <Icon size={24} color={color} strokeWidth={1.5} />
+                                </div>
                                 <div style={{ fontSize: '1.5rem', fontWeight: 800, color }}>{value}</div>
                                 <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.25rem' }}>{label}</div>
                             </div>
@@ -276,14 +291,14 @@ export default function Dashboard({ onAlertClick }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
                 <div className="dashboard-card" style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.45)', cursor: 'pointer', margin: 0 }}
                     onClick={() => { setStockTab('out'); onAlertClick && onAlertClick(); }}>
-                    <div className="dashboard-card-label" style={{ color: '#ef4444' }}>🔴 Sin Stock</div>
+                    <div className="dashboard-card-label" style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}><AlertCircle size={14} /> Sin Stock</div>
                     <div className="dashboard-card-value" style={{ color: '#ef4444' }}>{outOfStock.length.toLocaleString()}</div>
                     <div className="dashboard-card-sub">Productos con 0 unidades — Click para ver</div>
                 </div>
 
                 <div className="dashboard-card clickable" style={{ background: 'rgba(249,115,22,0.08)', borderColor: 'rgba(249,115,22,0.45)', margin: 0 }}
                     onClick={() => { setStockTab('low'); onAlertClick && onAlertClick(); }}>
-                    <div className="dashboard-card-label">🟡 Bajo Stock</div>
+                    <div className="dashboard-card-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><AlertTriangle size={14} color="#f97316" /> Bajo Stock</div>
                     <div className="dashboard-card-value" style={{ color: '#f97316' }}>{lowStock.length.toLocaleString()}</div>
                     <div className="dashboard-card-footer">
                         <span className="dashboard-card-sub">Entre 1 y {threshold - 1} uds.</span>
@@ -293,7 +308,7 @@ export default function Dashboard({ onAlertClick }) {
 
                 <div className="dashboard-card" style={{ background: 'rgba(107,114,128,0.08)', borderColor: 'rgba(107,114,128,0.45)', margin: 0, cursor: 'pointer' }}
                     onClick={() => { setStockTab('dead'); onAlertClick && onAlertClick(); }}>
-                    <div className="dashboard-card-label" style={{ color: '#6b7280' }}>⚫ Stock Muerto</div>
+                    <div className="dashboard-card-label" style={{ color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}><Archive size={14} /> Stock Muerto</div>
                     <div className="dashboard-card-value" style={{ color: '#6b7280' }}>
                         {deadStockLoading ? '…' : deadStock.length.toLocaleString()}
                     </div>
@@ -316,15 +331,15 @@ export default function Dashboard({ onAlertClick }) {
             <div className="dashboard-chart-section" style={{ marginTop: '1rem', borderTop: '3px solid #f97316' }}>
                 <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid #334155', marginBottom: '1rem', background: 'rgba(0,0,0,0.15)', padding: '0.5rem 1rem 0', flexWrap: 'wrap' }}>
                     <button style={stockTabBtn('out')} onClick={() => setStockTab('out')}>
-                        🔴 Sin Stock
+                        <AlertCircle size={13} style={{ marginRight: '4px' }} /> Sin Stock
                         <span style={{ marginLeft: '6px', background: stockTab === 'out' ? 'rgba(239,68,68,0.2)' : 'rgba(100,116,139,0.2)', color: stockTab === 'out' ? '#ef4444' : '#64748b', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px' }}>{outOfStock.length}</span>
                     </button>
                     <button style={stockTabBtn('low')} onClick={() => setStockTab('low')}>
-                        🟡 Bajo Stock (&lt; {threshold} uds.)
+                        <AlertTriangle size={13} style={{ marginRight: '4px' }} /> Bajo Stock (&lt; {threshold} uds.)
                         <span style={{ marginLeft: '6px', background: stockTab === 'low' ? 'rgba(249,115,22,0.2)' : 'rgba(100,116,139,0.2)', color: stockTab === 'low' ? '#f97316' : '#64748b', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px' }}>{lowStock.length}</span>
                     </button>
                     <button style={stockTabBtn('dead')} onClick={() => setStockTab('dead')}>
-                        ⚫ Stock Muerto (90d)
+                        <Archive size={13} style={{ marginRight: '4px' }} /> Stock Muerto (90d)
                         <span style={{ marginLeft: '6px', background: stockTab === 'dead' ? 'rgba(107,114,128,0.2)' : 'rgba(100,116,139,0.2)', color: stockTab === 'dead' ? '#6b7280' : '#64748b', borderRadius: '999px', fontSize: '0.72rem', fontWeight: 700, padding: '1px 7px' }}>
                             {deadStockLoading ? '…' : deadStock.length}
                         </span>
@@ -335,11 +350,11 @@ export default function Dashboard({ onAlertClick }) {
                     <div className="chart-empty" style={{ padding: '2rem' }}>Calculando stock muerto...</div>
                 ) : activeStockList.length > 0 ? (
                     <div className="dashboard-low-stock-list">
-                        <h4 style={{ padding: '0 1rem', marginBottom: '0.75rem' }}>
-                            {stockTab === 'out'  && '🔴 Productos Sin Stock (0 unidades)'}
-                            {stockTab === 'low'  && `🟡 Productos Bajo Stock (1–${threshold - 1} uds.)`}
-                            {stockTab === 'dead' && '⚫ Stock Muerto — sin ventas en 90 días'}
-                            {' '}— {activeStockList.length} ítem(s)
+                        <h4 style={{ padding: '0 1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {stockTab === 'out'  && <><AlertCircle size={14} color="#ef4444" /> Productos Sin Stock (0 unidades)</>}
+                            {stockTab === 'low'  && <><AlertTriangle size={14} color="#f97316" /> Productos Bajo Stock (1–{threshold - 1} uds.)</>}
+                            {stockTab === 'dead' && <><Archive size={14} color="#6b7280" /> Stock Muerto — sin ventas en 90 días</>}
+                            <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>— {activeStockList.length} ítem(s)</span>
                         </h4>
                         <div className="low-stock-table-wrapper" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                             <table className="low-stock-table">
@@ -371,17 +386,18 @@ export default function Dashboard({ onAlertClick }) {
                         </div>
                         {stockTab !== 'dead' && (
                             <div className="dashboard-export-bar">
-                                <button className="btn-export" onClick={e => handleExportOrder(e, activeStockList)}>
-                                    📋 Exportar como Nuevo Pedido
+                                <button className="btn-export" onClick={e => handleExportOrder(e, activeStockList)} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                    <Download size={14} /> Exportar como Nuevo Pedido
                                 </button>
                             </div>
                         )}
                     </div>
                 ) : (
-                    <div className="chart-empty" style={{ padding: '2rem' }}>
-                        {stockTab === 'out'  && '✅ No hay productos sin stock.'}
-                        {stockTab === 'low'  && `✅ No hay productos con bajo stock (< ${threshold} uds.).`}
-                        {stockTab === 'dead' && '✅ No hay stock muerto — todos los productos con stock han tenido movimiento en los últimos 90 días.'}
+                    <div className="chart-empty" style={{ padding: '2rem', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                        <CheckCircle2 size={16} color="#22c55e" />
+                        {stockTab === 'out'  && 'No hay productos sin stock.'}
+                        {stockTab === 'low'  && `No hay productos con bajo stock (< ${threshold} uds.).`}
+                        {stockTab === 'dead' && 'No hay stock muerto — todos los productos con stock han tenido movimiento en los últimos 90 días.'}
                     </div>
                 )}
             </div>
@@ -393,7 +409,7 @@ export default function Dashboard({ onAlertClick }) {
 
                 {/* ── Filter bar ── */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, marginRight: '0.25rem' }}>📅 Período:</span>
+                    <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600, marginRight: '0.25rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Calendar size={13} /> Período:</span>
                     {PRESETS.map(({ key, label }) => (
                         <button key={key} style={presetBtn(key)} onClick={() => setPreset(key)}>{label}</button>
                     ))}
@@ -472,11 +488,15 @@ export default function Dashboard({ onAlertClick }) {
                 {/* ── Trend line chart ── */}
                 <div style={{ marginBottom: '1.75rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <div className="dashboard-chart-title" style={{ marginBottom: 0, fontSize: '0.95rem' }}>
-                            📉 Tendencia de Ventas (Bs.)
+                        <div className="dashboard-chart-title" style={{ marginBottom: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <TrendingUp size={15} color="#22c55e" /> Tendencia de Ventas (Bs.)
                             {trendArrow && (
-                                <span style={{ marginLeft: '0.75rem', fontSize: '0.85rem', fontWeight: 700, color: trendColor }}>
-                                    {trendArrow} {Math.abs(trendPct).toFixed(1)}%
+                                <span style={{ marginLeft: '0.5rem', fontSize: '0.85rem', fontWeight: 700, color: trendColor, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                    {trendPct >= 0
+                                        ? <TrendingUp size={13} />
+                                        : <TrendingDown size={13} />
+                                    }
+                                    {Math.abs(trendPct).toFixed(1)}%
                                 </span>
                             )}
                         </div>
@@ -547,9 +567,9 @@ export default function Dashboard({ onAlertClick }) {
 
                 {/* ── Ventas por código de producto ── */}
                 <div style={{ marginBottom: '1.75rem' }}>
-                    <div className="dashboard-chart-title" style={{ fontSize: '0.95rem', marginBottom: '0.75rem' }}>
-                        🏷️ Ventas por Código de Producto
-                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 400, marginLeft: '0.5rem' }}>
+                    <div className="dashboard-chart-title" style={{ fontSize: '0.95rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Tag size={15} color="#818cf8" /> Ventas por Código de Producto
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 400, marginLeft: '0.25rem' }}>
                             Top {Math.min(byCodeData.length, 12)} productos
                         </span>
                     </div>
@@ -602,9 +622,9 @@ export default function Dashboard({ onAlertClick }) {
 
                 {/* ── Hora pico de ventas ── */}
                 <div>
-                    <div className="dashboard-chart-title" style={{ fontSize: '0.95rem', marginBottom: '0.75rem' }}>
-                        ⏰ Hora Pico de Ventas
-                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 400, marginLeft: '0.5rem' }}>
+                    <div className="dashboard-chart-title" style={{ fontSize: '0.95rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Clock size={15} color="#f59e0b" /> Hora Pico de Ventas
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 400, marginLeft: '0.25rem' }}>
                             distribución por hora del día
                         </span>
                     </div>
@@ -645,7 +665,7 @@ export default function Dashboard({ onAlertClick }) {
                     <div className="dashboard-card-sub">Registrados en DB</div>
                 </div>
                 <div className="dashboard-card value-card" style={{ margin: 0 }}>
-                    <div className="dashboard-card-label">💰 Valor del Inventario</div>
+                    <div className="dashboard-card-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><DollarSign size={13} color="var(--accent-color)" /> Valor del Inventario</div>
                     <div className="dashboard-card-value value-highlight">{formatCurrency(totalValue)}</div>
                     <div className="dashboard-card-sub">Precio de Costo × Stock</div>
                 </div>
@@ -653,7 +673,7 @@ export default function Dashboard({ onAlertClick }) {
 
             <div className="dashboard-charts-row" style={{ marginTop: '1rem' }}>
                 <div className="dashboard-chart-section" style={{ borderTop: '3px solid #38bdf8' }}>
-                    <div className="dashboard-chart-title">📦 Stock por Familia</div>
+                    <div className="dashboard-chart-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><BarChart2 size={15} color="#3590d0" /> Stock por Familia</div>
                     <ResponsiveContainer width="100%" height={220}>
                         <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                             <XAxis dataKey="name" stroke="#94a3b8" tick={{ fontSize: 11 }} />
@@ -669,7 +689,7 @@ export default function Dashboard({ onAlertClick }) {
                 </div>
 
                 <div className="dashboard-chart-section" style={{ borderTop: '3px solid #818cf8' }}>
-                    <div className="dashboard-chart-title">🏆 Top Histórico Vendidos <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400 }}>(todo el tiempo)</span></div>
+                    <div className="dashboard-chart-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Award size={15} color="#818cf8" /> Top Histórico Vendidos <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400 }}>(todo el tiempo)</span></div>
                     {byCodeData.length === 0 ? (
                         <div className="chart-empty">Sin datos de ventas disponibles</div>
                     ) : (

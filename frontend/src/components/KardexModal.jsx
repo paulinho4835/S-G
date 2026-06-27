@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Printer, X, Inbox, ClipboardList } from 'lucide-react';
 import * as api from '../lib/api';
 
 const TYPE_CONFIG = {
@@ -89,9 +90,9 @@ function MovementTable({ movements }) {
 
     if (movements.length === 0) {
         return (
-            <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
-                <p style={{ fontSize: '2.5rem', margin: 0 }}>📭</p>
-                <p style={{ marginTop: '0.5rem' }}>No hay registros en esta sección.</p>
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                <Inbox size={36} strokeWidth={1.2} />
+                <p style={{ margin: 0 }}>No hay registros en esta sección.</p>
             </div>
         );
     }
@@ -139,14 +140,15 @@ function MovementTable({ movements }) {
                         </span>
 
                         <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                            display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
                             background: c.bg, color: c.color,
                             padding: '0.2rem 0.5rem', borderRadius: '999px',
                             fontSize: '0.73rem', fontWeight: 600,
                             border: `1px solid ${c.color}33`,
                             whiteSpace: 'nowrap', overflow: 'hidden'
                         }}>
-                            {c.icon} {c.label}
+                            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', backgroundColor: c.color, flexShrink: 0 }} />
+                            {c.label}
                         </span>
 
                         <span style={{
@@ -227,8 +229,8 @@ export default function KardexModal({ part, onClose }) {
                     flexShrink: 0
                 }}>
                     <div>
-                        <h2 style={{ margin: 0, color: '#38bdf8', fontSize: '1.4rem' }}>
-                            📋 Kardex del Producto
+                        <h2 style={{ margin: 0, color: '#38bdf8', fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <ClipboardList size={20} /> Kardex del Producto
                         </h2>
                         <p style={{ margin: '0.3rem 0 0', color: '#94a3b8', fontSize: '0.9rem' }}>
                             <strong style={{ color: '#f8fafc' }}>{part.codigo_producto || part.codigo || part.name}</strong>
@@ -255,16 +257,17 @@ export default function KardexModal({ part, onClose }) {
                             }}
                             title="Imprimir la pestaña activa"
                         >
-                            🖨️ Imprimir
+                            <Printer size={15} /> Imprimir
                         </button>
                         <button
                             onClick={onClose}
                             style={{
                                 background: 'transparent', border: '1px solid #334155',
                                 color: '#94a3b8', borderRadius: '0.5rem',
-                                padding: '0.4rem 0.8rem', cursor: 'pointer', fontSize: '1rem'
+                                padding: '0.4rem 0.7rem', cursor: 'pointer',
+                                display: 'flex', alignItems: 'center'
                             }}
-                        >✕</button>
+                        ><X size={16} /></button>
                     </div>
                 </div>
 

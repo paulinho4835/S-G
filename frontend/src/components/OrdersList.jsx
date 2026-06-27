@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Truck, Download, Trash2, Inbox } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 
 export default function OrdersList() {
@@ -95,21 +96,21 @@ export default function OrdersList() {
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-                <h2 style={{ margin: 0 }}>📦 Lista de Pedidos</h2>
+                <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '7px' }}><Truck size={18} color="var(--accent-color)" /> Lista de Pedidos</h2>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={handleExportText} className="primary" disabled={orders.length === 0} style={{ backgroundColor: '#10b981' }}>
-                        📋 Exportar Texto
+                    <button onClick={handleExportText} className="primary" disabled={orders.length === 0} style={{ backgroundColor: '#10b981', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Download size={14} /> Exportar Texto
                     </button>
-                    <button onClick={handleClear} className="danger" disabled={orders.length === 0}>
-                        🗑️ Vaciar Lista
+                    <button onClick={handleClear} className="danger" disabled={orders.length === 0} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Trash2 size={14} /> Vaciar Lista
                     </button>
                 </div>
             </div>
 
             {orders.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                    <p style={{ fontSize: '2rem', margin: 0 }}>📭</p>
-                    <p style={{ marginTop: '1rem' }}>No hay pedidos en la lista.<br /><span style={{ fontSize: '0.9rem' }}>Usa el botón <strong>📦 Pedido</strong> en la tabla de Productos.</span></p>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                    <Inbox size={40} strokeWidth={1.2} />
+                    <p style={{ margin: 0 }}>No hay pedidos en la lista.<br /><span style={{ fontSize: '0.9rem' }}>Usa el botón <strong>Pedido</strong> en la tabla de Productos.</span></p>
                 </div>
             ) : (
                 <div style={{ overflowX: 'auto' }}>

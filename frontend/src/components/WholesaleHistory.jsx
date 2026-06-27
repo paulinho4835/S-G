@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Truck, Search, X, Inbox, User, Calendar, CheckCircle, CornerDownLeft, Download } from 'lucide-react';
 import { toast } from '../lib/toast';
 import * as api from '../lib/api';
+import ConfirmDialog from './ConfirmDialog';
+import { SkeletonTable } from './Skeleton';
 
 export default function WholesaleHistory() {
     const [orders, setOrders]         = useState([]);
@@ -8,6 +11,7 @@ export default function WholesaleHistory() {
     const [loading, setLoading]       = useState(false);
     const [expanded, setExpanded]     = useState(null); // order id expanded
     const [orderDetail, setOrderDetail] = useState({}); // { [id]: items }
+    const [confirmModal, setConfirmModal] = useState(null);
 
     const fetchOrders = async (clienteFilter = '') => {
         setLoading(true);
@@ -43,8 +47,8 @@ export default function WholesaleHistory() {
         }
     };
 
-    const handleReturn = async (orderId) => {
-        if (!confirm('¿Devolver este pedido? Se restaurará el stock de todos sus ítems.')) return;
+    const doReturn = async (orderId) => {
+        setConfirmModal(null);
         try {
             await api.returnWholesaleOrder(orderId);
             toast.success('Pedido devuelto. Stock restaurado.');
@@ -54,6 +58,12 @@ export default function WholesaleHistory() {
             toast.error('Error al procesar devolución');
         }
     };
+
+    const handleReturn = (orderId) => setConfirmModal({
+        message: '¿Devolver este pedido? Se restaurará el stock de todos sus ítems.',
+        danger: true,
+        onConfirm: () => doReturn(orderId),
+    });
 
     const fmt = (n) => parseFloat(n || 0).toFixed(2);
     const fmtDate = (d) => {
@@ -65,10 +75,18 @@ export default function WholesaleHistory() {
 
     return (
         <div className="glass-panel" style={{ marginTop: '1.5rem' }}>
+            {confirmModal && (
+                <ConfirmDialog
+                    message={confirmModal.message}
+                    danger={confirmModal.danger}
+                    onConfirm={confirmModal.onConfirm}
+                    onCancel={() => setConfirmModal(null)}
+                />
+            )}
             {/* Header + Search */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-                <h2 style={{ margin: 0, color: '#f59e0b', fontSize: '1.2rem' }}>
-                    📦 Historial de Ventas por Mayor
+                <h2 style={{ margin: 0, color: '#f59e0b', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <Truck size={18} /> Historial de Ventas por Mayor
                 </h2>
                 <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem' }}>
                     <input
@@ -77,27 +95,22 @@ export default function WholesaleHistory() {
                         placeholder="Buscar por cliente..."
                         style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '6px', color: 'var(--text-primary)', width: '220px' }}
                     />
-                    <button type="submit" className="primary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>
-                        🔍 Buscar
+                    <button type="submit" className="primary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Search size={13} /> Buscar
                     </button>
                     {search && (
-                        <button type="button" onClick={() => { setSearch(''); fetchOrders(); }} style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', backgroundColor: '#475569', border: 'none', borderRadius: '6px', color: 'white', cursor: 'pointer' }}>
-                            ✕ Limpiar
+                        <button type="button" onClick={() => { setSearch(''); fetchOrders(); }} style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', backgroundColor: '#475569', border: 'none', borderRadius: '6px', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <X size={13} /> Limpiar
                         </button>
                     )}
                 </form>
             </div>
 
-            {loading && (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-                    Cargando historial...
-                </div>
-            )}
+            {loading && <SkeletonTable rows={6} cols={5} />}
 
             {!loading && orders.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📭</div>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                    <Inbox size={40} strokeWidth={1.2} />
                     <p>{search ? `No se encontraron pedidos para "${search}"` : 'Aún no hay ventas por mayor registradas.'}</p>
                 </div>
             )}
@@ -117,20 +130,22 @@ export default function WholesaleHistory() {
                                 style={{ display: 'flex', alignItems: 'center', padding: '0.75rem 1rem', cursor: 'pointer', gap: '1rem', flexWrap: 'wrap' }}
                             >
                                 {/* Expand arrow */}
-                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', minWidth: '16px' }}>
-                                    {expanded === order.id ? '▼' : '▶'}
+                                <span style={{ color: 'var(--text-secondary)', minWidth: '16px', display: 'flex' }}>
+                                    {expanded === order.id
+                                        ? <X size={13} />
+                                        : <Search size={13} />}
                                 </span>
 
                                 <span style={{ fontWeight: 'bold', color: '#f59e0b', minWidth: '60px', fontSize: '0.9rem' }}>
                                     #{order.id}
                                 </span>
 
-                                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', flex: 1, minWidth: '120px', fontSize: '0.95rem' }}>
-                                    👤 {order.cliente}
+                                <span style={{ fontWeight: 'bold', color: 'var(--text-primary)', flex: 1, minWidth: '120px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <User size={13} color="var(--text-secondary)" /> {order.cliente}
                                 </span>
 
-                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', minWidth: '130px' }}>
-                                    🗓 {fmtDate(order.order_date)}
+                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', minWidth: '130px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Calendar size={12} /> {fmtDate(order.order_date)}
                                 </span>
 
                                 <span style={{
@@ -141,7 +156,9 @@ export default function WholesaleHistory() {
                                     backgroundColor: order.status === 'returned' ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)',
                                     color: order.status === 'returned' ? '#f87171' : '#34d399'
                                 }}>
-                                    {order.status === 'returned' ? '↩ Devuelto' : '✅ Activo'}
+                                    {order.status === 'returned'
+                                        ? <><CornerDownLeft size={11} /> Devuelto</>
+                                        : <><CheckCircle size={11} /> Activo</>}
                                 </span>
 
                                 <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '1.05rem', minWidth: '100px', textAlign: 'right' }}>
@@ -160,10 +177,11 @@ export default function WholesaleHistory() {
                                             cursor: 'pointer',
                                             fontSize: '0.75rem',
                                             fontWeight: '500',
-                                            whiteSpace: 'nowrap'
+                                            whiteSpace: 'nowrap',
+                                            display: 'flex', alignItems: 'center', gap: '4px'
                                         }}
                                     >
-                                        ↩ Devolver
+                                        <CornerDownLeft size={12} /> Devolver
                                     </button>
                                 )}
                             </div>
@@ -280,9 +298,10 @@ export default function WholesaleHistory() {
                                                         gap: '0.35rem'
                                                     }}
                                                 >
-                                                    📥 Descargar PDF
+                                                    <Download size={13} /> Descargar PDF
                                                 </button>
                                             </div>
+                                            <div className="table-scroll">
                                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
                                                 <thead>
                                                     <tr style={{ color: 'var(--text-secondary)', borderBottom: '1px solid #334155' }}>
@@ -323,6 +342,7 @@ export default function WholesaleHistory() {
                                                     </tr>
                                                 </tfoot>
                                             </table>
+                                            </div>
                                         </>
                                     )}
                                 </div>
