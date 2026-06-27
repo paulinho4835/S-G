@@ -13,7 +13,7 @@ import {
     AlertCircle, AlertTriangle, Archive, CheckCircle2, Calendar,
     Clock, Award, Tag, BarChart2
 } from 'lucide-react';
-import { SkeletonBar } from './Skeleton';
+import { SkeletonBar, SkeletonChart } from './Skeleton';
 import './dashboard.css';
 
 const PERIOD_LABELS = { today: 'Hoy', week: 'Esta Semana', month: 'Este Mes' };
@@ -426,7 +426,7 @@ export default function Dashboard({ onAlertClick }) {
                     )}
 
                     {analyticsLoading && (
-                        <span style={{ fontSize: '0.78rem', color: '#64748b', marginLeft: '0.5rem' }}>Cargando...</span>
+                        <SkeletonBar height={12} width={70} style={{ display: 'inline-block', marginLeft: '0.5rem', verticalAlign: 'middle' }} />
                     )}
                 </div>
 
@@ -520,7 +520,7 @@ export default function Dashboard({ onAlertClick }) {
                     </div>
 
                     {analyticsLoading ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Cargando...</div>
+                        <SkeletonChart height={230} />
                     ) : trendData.length === 0 ? (
                         <div className="chart-empty">Sin ventas en el período seleccionado</div>
                     ) : (
@@ -575,7 +575,7 @@ export default function Dashboard({ onAlertClick }) {
                     </div>
 
                     {analyticsLoading ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Cargando...</div>
+                        <SkeletonChart height={230} />
                     ) : byCodeData.length === 0 ? (
                         <div className="chart-empty">Sin ventas en el período seleccionado</div>
                     ) : (
@@ -630,7 +630,7 @@ export default function Dashboard({ onAlertClick }) {
                     </div>
 
                     {analyticsLoading ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Cargando...</div>
+                        <SkeletonChart height={230} />
                     ) : hourData.length === 0 ? (
                         <div className="chart-empty">Sin ventas en el período seleccionado</div>
                     ) : (

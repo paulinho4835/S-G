@@ -24,6 +24,18 @@ export function SkeletonTable({ rows = 8, cols = 6 }) {
     );
 }
 
+/** Placeholder con forma de gráfico (barras de alturas variadas). */
+export function SkeletonChart({ height = 230, bars = 12 }) {
+    const heights = [45, 70, 55, 85, 60, 95, 50, 75, 65, 90, 58, 80];
+    return (
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height, padding: '1rem 0.5rem 0' }}>
+            {Array.from({ length: bars }).map((_, i) => (
+                <SkeletonBar key={i} height={`${heights[i % heights.length]}%`} radius={3} style={{ flex: 1 }} />
+            ))}
+        </div>
+    );
+}
+
 /** Tarjetas KPI tipo dashboard. */
 export function SkeletonCards({ count = 4 }) {
     return (
