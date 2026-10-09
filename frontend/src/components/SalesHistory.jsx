@@ -278,8 +278,7 @@ function SalesHistory() {
                                         )}
                                     </td>
                                 </tr>
-                                );
-                            })}
+                            ))}
 
                             <tr style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', borderTop: '2px solid #34d399', fontWeight: 'bold' }}>
                                 <td colSpan="5" style={{ padding: '12px', textAlign: 'right', color: '#059669' }}>TOTAL:</td>
