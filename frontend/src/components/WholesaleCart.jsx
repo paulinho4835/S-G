@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, X, Loader2, FileText, CheckCircle, Trash2 } from 'lucide-react';
 import { toast } from '../lib/toast';
 import * as api from '../lib/api';
+import { isBankQrEnabled } from '../lib/bankQr';
+import BankQrCheckout from './BankQrCheckout';
 
 export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, onClearCart, onOrderComplete, onQuoteComplete }) {
     const [cliente, setCliente] = useState('');
@@ -9,6 +11,17 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
     const [notes, setNotes] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [quoting, setQuoting] = useState(false);
+    // Con el QR dinámico activo, las ventas "QR" se cobran con un QR del banco por el total exacto y el
+    // pedido se registra recién cuando el banco confirma el pago. Sin él, sigue el QR fijo de siempre.
+    const [bankQr, setBankQr] = useState(false);
+    const [qrCharge, setQrCharge] = useState(null);
+    const usesBankQr = bankQr && invoiceType.endsWith('_QR');
+
+    useEffect(() => {
+        let alive = true;
+        isBankQrEnabled().then((enabled) => alive && setBankQr(enabled));
+        return () => { alive = false; };
+    }, []);
 
     const subtotal = cartItems.reduce((acc, item) => {
         const price = parseFloat(item.unit_price) || 0;
@@ -64,6 +77,22 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
 
     const handleConfirm = async () => {
         if (!validate()) return;
+        if (usesBankQr) {
+            setQrCharge({
+                kind: 'wholesale',
+                payload: {
+                    cliente: cliente.trim(),
+                    invoice_type: invoiceType,
+                    notes,
+                    items: cartItems.map(i => ({
+                        part_id:    i.id,
+                        quantity:   parseInt(i.quantity),
+                        unit_price: parseFloat(i.unit_price)
+                    }))
+                }
+            });
+            return;
+        }
         setSubmitting(true);
         try {
             const data = await api.createWholesaleOrder({
@@ -88,6 +117,24 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
             setSubmitting(false);
         }
     };
+
+    // Antes del carrito vacío: al registrarse la venta se vacía el carrito y el cobro debe seguir visible.
+    if (qrCharge) {
+        return (
+            <BankQrCheckout
+                charge={qrCharge}
+                onRegistered={(payment) => {
+                    toast.success(`✅ Pago QR recibido — Venta Mayorista #${payment.wholesale_order_id} registrada`);
+                    onClearCart();
+                    setCliente('');
+                    setNotes('');
+                    onOrderComplete();
+                }}
+                onCancelled={() => setQrCharge(null)}
+                onClose={() => setQrCharge(null)}
+            />
+        );
+    }
 
     if (cartItems.length === 0) {
         return (
@@ -261,7 +308,13 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
                     }}
                 >
-                    {submitting ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Procesando...</> : <><CheckCircle size={14} /> Confirmar Venta Mayorista</>}
+                    {submitting ? (
+                        <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Procesando...</>
+                    ) : usesBankQr ? (
+                        <>📱 Generar QR de cobro (Bs. {subtotal.toFixed(2)})</>
+                    ) : (
+                        <><CheckCircle size={14} /> Confirmar Venta Mayorista</>
+                    )}
                 </button>
                 <button
                     onClick={onClearCart}

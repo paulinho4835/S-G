@@ -100,10 +100,14 @@ function SalesHistory() {
     const displayedSales = sales.filter(sale => {
         if (filterType === 'ALL') return true;
         if (filterType === 'QR') {
-            return sale.invoice_type === 'FACTURA_QR' || sale.invoice_type === 'SIN_FACTURA_QR';
+            return sale.invoice_type === 'FACTURA_QR' || sale.invoice_type === 'SIN_FACTURA_QR'
+                || sale.invoice_type === 'MAYOR_FACTURA_QR' || sale.invoice_type === 'MAYOR_SIN_FACTURA_QR';
         }
         if (filterType === 'NORMAL') {
             return sale.invoice_type === 'FACTURA' || sale.invoice_type === 'SIN_FACTURA';
+        }
+        if (filterType === 'MAYOR') {
+            return sale.invoice_type && sale.invoice_type.startsWith('MAYOR');
         }
         return true;
     });
@@ -172,8 +176,9 @@ function SalesHistory() {
                         style={{ padding: '8px', colorScheme: 'dark', backgroundColor: '#1e293b', color: 'white', border: '1px solid #555', borderRadius: '4px' }}
                     >
                         <option value="ALL">Ventas Total</option>
-                        <option value="NORMAL">Ventas</option>
+                        <option value="NORMAL">Ventas Normales</option>
                         <option value="QR">Ventas QR</option>
+                        <option value="MAYOR">🏪 Ventas x Mayor</option>
                     </select>
                 </div>
                 <button onClick={() => fetchSales()} className="primary" style={{ height: '35px', marginBottom: '1px' }}>
@@ -225,6 +230,10 @@ function SalesHistory() {
                                                 <option value="SIN_FACTURA_QR">Sin Factura QR</option>
                                                 <option value="FACTURA">Con Factura</option>
                                                 <option value="FACTURA_QR">Con Factura QR</option>
+                                                <option value="MAYOR_SIN_FACTURA">Mayor Sin Factura</option>
+                                                <option value="MAYOR_SIN_FACTURA_QR">Mayor Sin Factura QR</option>
+                                                <option value="MAYOR_FACTURA">Mayor Factura</option>
+                                                <option value="MAYOR_FACTURA_QR">Mayor Factura QR</option>
                                             </select>
                                         ) : (
                                             <span
@@ -234,7 +243,11 @@ function SalesHistory() {
                                             >
                                                 {sale.invoice_type === 'FACTURA' ? 'Con Factura' :
                                                  sale.invoice_type === 'FACTURA_QR' ? 'Con Factura QR' :
-                                                 sale.invoice_type === 'SIN_FACTURA_QR' ? 'Sin Factura QR' : 'Sin Factura'}
+                                                 sale.invoice_type === 'SIN_FACTURA_QR' ? 'Sin Factura QR' :
+                                                 sale.invoice_type === 'MAYOR_SIN_FACTURA' ? 'Mayor Sin Factura' :
+                                                 sale.invoice_type === 'MAYOR_SIN_FACTURA_QR' ? 'Mayor Sin Factura QR' :
+                                                 sale.invoice_type === 'MAYOR_FACTURA' ? 'Mayor Factura' :
+                                                 sale.invoice_type === 'MAYOR_FACTURA_QR' ? 'Mayor Factura QR' : 'Sin Factura'}
                                                 {!sale.refunded && <Pencil size={11} color="#888" />}
                                             </span>
                                         )}
@@ -265,7 +278,8 @@ function SalesHistory() {
                                         )}
                                     </td>
                                 </tr>
-                            ))}
+                                );
+                            })}
 
                             <tr style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', borderTop: '2px solid #34d399', fontWeight: 'bold' }}>
                                 <td colSpan="5" style={{ padding: '12px', textAlign: 'right', color: '#059669' }}>TOTAL:</td>

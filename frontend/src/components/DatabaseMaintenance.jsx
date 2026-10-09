@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as api from '../lib/api';
+import BankQrSettings from './BankQrSettings';
 
 // Cambia este PIN para mayor seguridad
 const ADMIN_PIN = '3356';
@@ -94,6 +95,8 @@ function DatabaseMaintenance() {
     const btnEnabled = pinCorrect && confirmText === 'BORRAR TODO' && countdownDone && !loading;
 
     return (
+        <>
+        <BankQrSettings />
         <div className="glass-panel" style={{ maxWidth: '600px', margin: '2rem auto' }}>
             <h2 style={{ color: 'var(--accent-color)', marginTop: 0, fontSize: '1.8rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
                 🔧 Mantenimiento de la Base de Datos
@@ -233,6 +236,7 @@ function DatabaseMaintenance() {
                 </button>
             </form>
         </div>
+        </>
     );
 }
 

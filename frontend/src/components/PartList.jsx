@@ -441,7 +441,15 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                 />
             )}
             {selectedPartForSale && (
-                <SalesModal part={selectedPartForSale} onClose={() => setSelectedPartForSale(null)} onConfirm={handleConfirmSale} />
+                <SalesModal
+                    part={selectedPartForSale}
+                    onClose={() => setSelectedPartForSale(null)}
+                    onConfirm={handleConfirmSale}
+                    onQrRegistered={() => {
+                        toast.success('Pago QR recibido y venta registrada');
+                        fetchParts();
+                    }}
+                />
             )}
             {selectedPartForEdit && (
                 <EditPartModal part={selectedPartForEdit} onClose={() => setSelectedPartForEdit(null)} onConfirm={fetchParts} />

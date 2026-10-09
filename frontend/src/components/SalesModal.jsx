@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from '../lib/toast';
+import { isBankQrEnabled } from '../lib/bankQr';
+import BankQrCheckout from './BankQrCheckout';
 
-export default function SalesModal({ part, onClose, onConfirm }) {
+export default function SalesModal({ part, onClose, onConfirm, onQrRegistered }) {
     const [quantity, setQuantity] = useState(1);
     const [price, setPrice] = useState('');
     const [invoiceType, setInvoiceType] = useState('SIN_FACTURA');
+    // Con el QR dinámico activo, las ventas "QR" se cobran con un QR del banco por el monto exacto y la
+    // venta se registra recién cuando el banco confirma el pago. Sin él, sigue el QR fijo de siempre.
+    const [bankQr, setBankQr] = useState(false);
+    const [qrCharge, setQrCharge] = useState(null);
+    const usesBankQr = bankQr && invoiceType.endsWith('_QR');
+
+    useEffect(() => {
+        let alive = true;
+        isBankQrEnabled().then((enabled) => alive && setBankQr(enabled));
+        return () => { alive = false; };
+    }, []);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -16,13 +29,29 @@ export default function SalesModal({ part, onClose, onConfirm }) {
             return;
         }
 
-        onConfirm({
+        const sale = {
             part_id: part.id,
             quantity: parseInt(quantity),
             unit_price: unitPrice,
             invoice_type: invoiceType
-        });
+        };
+        if (usesBankQr) {
+            setQrCharge({ kind: 'sale', payload: sale });
+            return;
+        }
+        onConfirm(sale);
     };
+
+    if (qrCharge) {
+        return (
+            <BankQrCheckout
+                charge={qrCharge}
+                onRegistered={() => onQrRegistered?.()}
+                onCancelled={() => setQrCharge(null)}
+                onClose={onClose}
+            />
+        );
+    }
 
     return (
         <div style={{
@@ -83,6 +112,11 @@ export default function SalesModal({ part, onClose, onConfirm }) {
                             <option value="FACTURA">Venta con factura</option>
                             <option value="FACTURA_QR">Venta con factura QR</option>
                         </select>
+                        {usesBankQr && (
+                            <small style={{ display: 'block', marginTop: '0.4rem', color: 'var(--accent-color)' }}>
+                                📱 Se cobrará con QR del banco por Bs. {((parseFloat(price) || 0) * (parseInt(quantity) || 0)).toFixed(2)}; la venta se registra al confirmarse el pago.
+                            </small>
+                        )}
                     </div>
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
                         <button type="button" onClick={onClose} style={{
@@ -92,7 +126,7 @@ export default function SalesModal({ part, onClose, onConfirm }) {
                         }}>
                             Cancelar
                         </button>
-                        <button type="submit" className="primary">Confirmar Venta</button>
+                        <button type="submit" className="primary">{usesBankQr ? 'Generar QR de cobro' : 'Confirmar Venta'}</button>
                     </div>
                 </form>
             </div>
