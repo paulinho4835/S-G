@@ -245,7 +245,8 @@ export async function deleteSale(saleId) {
 
 // ── MAYORISTA ─────────────────────────────────────────────────────────────────
 // Lista compartida de pedidos a proveedor (migrada desde localStorage).
-const SUPPLY_ORDER_SELECT = 'id, client_order_id, part_id, product_snapshot, quantity, order_date, created_at, updated_at';
+const SUPPLY_ORDER_SELECT = 'id, client_order_id, part_id, product_snapshot, quantity, order_date, status, supplier, notes, closed_at, archived_at, created_at, updated_at';
+const SUPPLY_ORDER_STATUSES = ['pending', 'ordered', 'received', 'cancelled'];
 
 function normalizeSupplyQuantity(value) {
     if (value === '' || value === null || value === undefined) return null;
@@ -254,6 +255,20 @@ function normalizeSupplyQuantity(value) {
         throw new Error('La cantidad del pedido debe ser un entero mayor o igual a 1');
     }
     return quantity;
+}
+
+function normalizeSupplyText(value, field, maxLength) {
+    if (value === null || value === undefined || value === '') return null;
+    const text = String(value).trim();
+    if (text.length === 0) return null;
+    if (text.length > maxLength) throw new Error(`${field} no puede superar ${maxLength} caracteres`);
+    return text;
+}
+
+function normalizeSupplyStatus(value) {
+    const status = value || 'pending';
+    if (!SUPPLY_ORDER_STATUSES.includes(status)) throw new Error('Estado de pedido inválido');
+    return status;
 }
 
 function buildSupplyOrderRow(order, quantity) {
@@ -284,21 +299,27 @@ function buildSupplyOrderRow(order, quantity) {
         product_snapshot: snapshot,
         quantity: normalizeSupplyQuantity(quantity),
         order_date: parsedDate.toISOString(),
+        status: normalizeSupplyStatus(order.status),
+        supplier: normalizeSupplyText(order.supplier, 'El proveedor', 120),
+        notes: normalizeSupplyText(order.notes, 'Las notas', 500),
     };
 }
 
-export async function getSupplyOrders() {
+export async function getSupplyOrders({ includeArchived = false } = {}) {
     const PAGE = 1000;
     let all = [];
     let from = 0;
 
     while (true) {
-        const { data, error } = await supabase
+        let query = supabase
             .from('supply_orders')
             .select(SUPPLY_ORDER_SELECT)
             .order('order_date', { ascending: true })
             .order('id', { ascending: true })
             .range(from, from + PAGE - 1);
+        if (!includeArchived) query = query.is('archived_at', null);
+
+        const { data, error } = await query;
         if (error) throw new Error(error.message);
         all = all.concat(data || []);
         if (!data || data.length < PAGE) break;
@@ -339,21 +360,76 @@ export async function importSupplyOrders(orders, quantities = {}) {
     return { message: 'success', data: data || [] };
 }
 
-export async function updateSupplyOrder(orderId, quantity) {
+export async function updateSupplyOrder(orderId, patchOrQuantity) {
+    const patch = typeof patchOrQuantity === 'object' && patchOrQuantity !== null
+        ? patchOrQuantity
+        : { quantity: patchOrQuantity };
+    const update = {};
+
+    if (Object.prototype.hasOwnProperty.call(patch, 'quantity')) {
+        update.quantity = normalizeSupplyQuantity(patch.quantity);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'status')) {
+        update.status = normalizeSupplyStatus(patch.status);
+        update.closed_at = ['received', 'cancelled'].includes(update.status)
+            ? new Date().toISOString()
+            : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'supplier')) {
+        update.supplier = normalizeSupplyText(patch.supplier, 'El proveedor', 120);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'notes')) {
+        update.notes = normalizeSupplyText(patch.notes, 'Las notas', 500);
+    }
+    if (Object.keys(update).length === 0) return { message: 'success', data: null };
+
     const { data, error } = await supabase
         .from('supply_orders')
-        .update({ quantity: normalizeSupplyQuantity(quantity), updated_at: new Date().toISOString() })
+        .update(update)
         .eq('id', orderId)
+        .is('archived_at', null)
         .select(SUPPLY_ORDER_SELECT)
         .single();
     if (error) throw new Error(error.message);
     return { message: 'success', data };
 }
 
-export async function deleteSupplyOrder(orderId) {
-    const { error } = await supabase.from('supply_orders').delete().eq('id', orderId);
+export async function archiveSupplyOrder(orderId) {
+    const { data, error } = await supabase
+        .from('supply_orders')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', orderId)
+        .is('archived_at', null)
+        .select(SUPPLY_ORDER_SELECT)
+        .single();
+    if (error) throw new Error(error.message);
+    return { message: 'success', data };
+}
+
+export async function archiveAllSupplyOrders() {
+    const { error } = await supabase
+        .from('supply_orders')
+        .update({ archived_at: new Date().toISOString() })
+        .is('archived_at', null);
     if (error) throw new Error(error.message);
     return { message: 'success' };
+}
+
+export async function restoreSupplyOrder(orderId) {
+    const { data, error } = await supabase
+        .from('supply_orders')
+        .update({ archived_at: null })
+        .eq('id', orderId)
+        .not('archived_at', 'is', null)
+        .select(SUPPLY_ORDER_SELECT)
+        .single();
+    if (error) throw new Error(error.message);
+    return { message: 'success', data };
+}
+
+// Compatibilidad con llamadas antiguas: ya no elimina físicamente.
+export async function deleteSupplyOrder(orderId) {
+    return archiveSupplyOrder(orderId);
 }
 
 export async function getWholesaleOrders({ cliente } = {}) {
