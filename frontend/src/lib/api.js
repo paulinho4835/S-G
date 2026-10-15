@@ -85,11 +85,9 @@ export async function updatePart(id, body) {
 }
 
 export async function deletePart(id) {
-    await supabase.from('stock_movements').delete().eq('part_id', id);
-    await supabase.from('sales').delete().eq('part_id', id);
-    const { error } = await supabase.from('parts').delete().eq('id', id);
+    const { data, error } = await supabase.rpc('fn_delete_part', { p_part_id: id });
     if (error) throw new Error(error.message);
-    return { message: 'deleted' };
+    return { message: 'deleted', data };
 }
 
 export async function restock(partId, quantity) {
@@ -226,9 +224,12 @@ export async function createSale({ part_id, quantity, unit_price, invoice_type }
 }
 
 export async function updateSaleInvoiceType(saleId, invoice_type) {
-    const { error } = await supabase.from('sales').update({ invoice_type }).eq('id', saleId);
+    const { data, error } = await supabase.rpc('fn_update_sale_invoice_type', {
+        p_sale_id: saleId,
+        p_invoice_type: invoice_type,
+    });
     if (error) throw new Error(error.message);
-    return { message: 'success' };
+    return { message: 'success', data };
 }
 
 export async function returnSale(saleId) {

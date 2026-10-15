@@ -34,6 +34,8 @@ const NAV_ITEMS = [
     { view: 'maintenance',       label: 'Mantenimiento',  Icon: Wrench },
 ];
 
+const isAdminSession = (session) => ['admin', 'owner'].includes(session?.user?.app_metadata?.role);
+
 function App() {
     const [refreshKey, setRefreshKey] = useState(0);
     const [view, setView] = useState('register');
@@ -42,6 +44,7 @@ function App() {
     const [cartOpen, setCartOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
     const [authLoading, setAuthLoading] = useState(true);
 
     const handleAddToCart = (part) => {
@@ -83,10 +86,13 @@ function App() {
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setIsAuthenticated(!!session);
+            setIsAdmin(isAdminSession(session));
             setAuthLoading(false);
         });
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setIsAuthenticated(!!session);
+            setIsAdmin(isAdminSession(session));
+            if (!session) setView('register');
         });
         return () => subscription.unsubscribe();
     }, []);
@@ -163,6 +169,8 @@ function App() {
 
     if (!isAuthenticated) return <Login onLogin={handleLogin} />;
 
+    const visibleNavItems = NAV_ITEMS.filter(item => item.view !== 'maintenance' || isAdmin);
+
     return (
         <>
             <OfflineBanner />
@@ -196,7 +204,7 @@ function App() {
                 </div>
 
                 <nav className={`nav-tabs${menuOpen ? ' open' : ''}`}>
-                    {NAV_ITEMS.map(({ view: v, label, Icon, cls }, i) => (
+                    {visibleNavItems.map(({ view: v, label, Icon, cls }, i) => (
                         <button
                             key={v}
                             className={[view === v ? 'active' : '', cls || ''].filter(Boolean).join(' ')}
@@ -237,7 +245,7 @@ function App() {
                 )}
                 {view === 'wholesale-history' && <WholesaleHistory />}
                 {view === 'quotations' && <QuotationsList />}
-                {view === 'maintenance' && <DatabaseMaintenance />}
+                {view === 'maintenance' && isAdmin && <DatabaseMaintenance />}
                 </Suspense>
                 </ErrorBoundary>
             </main>

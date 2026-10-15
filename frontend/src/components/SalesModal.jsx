@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from '../lib/toast';
 import { isBankQrEnabled } from '../lib/bankQr';
 import BankQrCheckout from './BankQrCheckout';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function SalesModal({ part, onClose, onConfirm, onQrRegistered }) {
     const [quantity, setQuantity] = useState(1);
@@ -11,6 +12,7 @@ export default function SalesModal({ part, onClose, onConfirm, onQrRegistered })
     // venta se registra recién cuando el banco confirma el pago. Sin él, sigue el QR fijo de siempre.
     const [bankQr, setBankQr] = useState(false);
     const [qrCharge, setQrCharge] = useState(null);
+    const [pendingSale, setPendingSale] = useState(null);
     const usesBankQr = bankQr && invoiceType.endsWith('_QR');
 
     useEffect(() => {
@@ -23,6 +25,16 @@ export default function SalesModal({ part, onClose, onConfirm, onQrRegistered })
         e.preventDefault();
         const unitPrice = parseFloat(price);
         const costPrice = parseFloat(part.cost_price || 0);
+        const saleQuantity = parseInt(quantity, 10);
+
+        if (!Number.isSafeInteger(saleQuantity) || saleQuantity < 1 || saleQuantity > Number(part.stock || 0)) {
+            toast.error(`La cantidad debe estar entre 1 y ${part.stock || 0}.`);
+            return;
+        }
+        if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+            toast.error('Ingresa un precio válido.');
+            return;
+        }
         
         if (unitPrice < costPrice) {
             toast.error(`¡Error! El precio de venta (Bs. ${unitPrice.toFixed(2)}) no puede ser menor al costo base (Bs. ${costPrice.toFixed(2)})`);
@@ -31,15 +43,11 @@ export default function SalesModal({ part, onClose, onConfirm, onQrRegistered })
 
         const sale = {
             part_id: part.id,
-            quantity: parseInt(quantity),
+            quantity: saleQuantity,
             unit_price: unitPrice,
             invoice_type: invoiceType
         };
-        if (usesBankQr) {
-            setQrCharge({ kind: 'sale', payload: sale });
-            return;
-        }
-        onConfirm(sale);
+        setPendingSale({ sale, usesBankQr });
     };
 
     if (qrCharge) {
@@ -54,16 +62,17 @@ export default function SalesModal({ part, onClose, onConfirm, onQrRegistered })
     }
 
     return (
-        <div style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.7)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000
-        }}>
-            <div className="glass-panel" style={{ width: '400px', maxWidth: '90%' }}>
+        <>
+            <div style={{
+                position: 'fixed',
+                top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 1000
+            }}>
+                <div className="glass-panel" style={{ width: '400px', maxWidth: '90%' }}>
                 <h3 style={{ marginTop: 0 }}>Vender {part.name}</h3>
                 <form onSubmit={handleSubmit}>
                     <div style={{ marginBottom: '1rem' }}>
@@ -129,7 +138,25 @@ export default function SalesModal({ part, onClose, onConfirm, onQrRegistered })
                         <button type="submit" className="primary">{usesBankQr ? 'Generar QR de cobro' : 'Confirmar Venta'}</button>
                     </div>
                 </form>
+                </div>
             </div>
-        </div>
+            {pendingSale && (
+                <ConfirmDialog
+                    message={pendingSale.usesBankQr
+                        ? `¿Generar el QR por Bs. ${(pendingSale.sale.unit_price * pendingSale.sale.quantity).toFixed(2)}? La venta solo reducirá stock cuando el pago sea confirmado.`
+                        : `¿Confirmar la venta de ${pendingSale.sale.quantity} unidad(es) de ${part.codigo_producto || part.name}? El stock se reducirá inmediatamente.`}
+                    onConfirm={() => {
+                        const current = pendingSale;
+                        setPendingSale(null);
+                        if (current.usesBankQr) {
+                            setQrCharge({ kind: 'sale', payload: current.sale });
+                        } else {
+                            onConfirm(current.sale);
+                        }
+                    }}
+                    onCancel={() => setPendingSale(null)}
+                />
+            )}
+        </>
     );
 }

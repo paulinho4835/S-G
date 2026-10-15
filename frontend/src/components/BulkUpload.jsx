@@ -1,18 +1,25 @@
 import React, { useState } from 'react';
 import * as api from '../lib/api';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function BulkUpload({ onUploadComplete }) {
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState('');
+    const [confirmImport, setConfirmImport] = useState(false);
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
         setMessage('');
     };
 
-    const handleUpload = async () => {
+    const handleUpload = () => {
         if (!file) { setMessage('Por favor selecciona un archivo Excel'); return; }
+        setConfirmImport(true);
+    };
+
+    const performUpload = async () => {
+        setConfirmImport(false);
         setUploading(true);
         setMessage('');
         try {
@@ -29,6 +36,13 @@ export default function BulkUpload({ onUploadComplete }) {
 
     return (
         <div className="glass-panel" style={{ marginBottom: '2rem' }}>
+            {confirmImport && (
+                <ConfirmDialog
+                    message="¿Importar este archivo? Puede modificar existencias y reducir el stock de productos existentes."
+                    onConfirm={performUpload}
+                    onCancel={() => setConfirmImport(false)}
+                />
+            )}
             <h3 style={{ marginTop: 0 }}>Carga Masiva desde Excel</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1rem' }}>
                 El archivo debe tener las columnas: <strong>FAMILIA, CODIGO_PRODUCT, MARCA, MUNDIAL, PRECIO BAS, PV_GELIPE, STO, MI, ME, ALT, PES, TOP, APLICACION, CODIGO</strong>

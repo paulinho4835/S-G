@@ -569,7 +569,18 @@ export default function OrdersList() {
                                                 <RotateCcw size={16} />
                                             </button>
                                         ) : (
-                                            <button type="button" onClick={() => handleArchive(order.order_id)} style={{ ...controlStyle, cursor: 'pointer', color: '#fca5a5' }} title="Archivar pedido">
+                                            <button
+                                                type="button"
+                                                onClick={() => setConfirmModal({
+                                                    message: '¿Archivar este pedido? No se eliminará y podrás restaurarlo desde el historial.',
+                                                    onConfirm: async () => {
+                                                        setConfirmModal(null);
+                                                        await handleArchive(order.order_id);
+                                                    },
+                                                })}
+                                                style={{ ...controlStyle, cursor: 'pointer', color: '#fca5a5' }}
+                                                title="Archivar pedido"
+                                            >
                                                 <Archive size={16} />
                                             </button>
                                         )}

@@ -4,6 +4,7 @@ import { toast } from '../lib/toast';
 import * as api from '../lib/api';
 import { isBankQrEnabled } from '../lib/bankQr';
 import BankQrCheckout from './BankQrCheckout';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, onClearCart, onOrderComplete, onQuoteComplete }) {
     const [cliente, setCliente] = useState('');
@@ -15,6 +16,7 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
     // pedido se registra recién cuando el banco confirma el pago. Sin él, sigue el QR fijo de siempre.
     const [bankQr, setBankQr] = useState(false);
     const [qrCharge, setQrCharge] = useState(null);
+    const [confirmAction, setConfirmAction] = useState(null);
     const usesBankQr = bankQr && invoiceType.endsWith('_QR');
 
     useEffect(() => {
@@ -75,8 +77,8 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
         }
     };
 
-    const handleConfirm = async () => {
-        if (!validate()) return;
+    const submitWholesaleOrder = async () => {
+        setConfirmAction(null);
         if (usesBankQr) {
             setQrCharge({
                 kind: 'wholesale',
@@ -118,6 +120,36 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
         }
     };
 
+    const handleConfirm = () => {
+        if (!validate()) return;
+        setConfirmAction({
+            message: usesBankQr
+                ? `¿Generar un QR por Bs. ${subtotal.toFixed(2)}? La venta solo reducirá stock cuando el pago sea confirmado.`
+                : `¿Confirmar la venta mayorista por Bs. ${subtotal.toFixed(2)}? Se reducirá el stock de todos los ítems.`,
+            onConfirm: submitWholesaleOrder,
+        });
+    };
+
+    const handleRemoveItem = (cartKey) => {
+        setConfirmAction({
+            message: '¿Quitar este producto del carrito mayorista?',
+            onConfirm: () => {
+                setConfirmAction(null);
+                onRemoveItem(cartKey);
+            },
+        });
+    };
+
+    const handleClearCart = () => {
+        setConfirmAction({
+            message: '¿Vaciar todo el carrito mayorista? Esta acción quitará todos los productos seleccionados.',
+            onConfirm: () => {
+                setConfirmAction(null);
+                onClearCart();
+            },
+        });
+    };
+
     // Antes del carrito vacío: al registrarse la venta se vacía el carrito y el cobro debe seguir visible.
     if (qrCharge) {
         return (
@@ -150,6 +182,13 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
 
     return (
         <div style={styles.container}>
+            {confirmAction && (
+                <ConfirmDialog
+                    message={confirmAction.message}
+                    onConfirm={confirmAction.onConfirm}
+                    onCancel={() => setConfirmAction(null)}
+                />
+            )}
             {/* Header */}
             <div style={styles.header}>
                 <span style={{ fontWeight: 'bold', color: '#f59e0b', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -241,7 +280,7 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                                     Bs. {((parseFloat(item.unit_price) || 0) * (parseInt(item.quantity) || 0)).toFixed(2)}
                                 </span>
                                 <button
-                                    onClick={() => onRemoveItem(item.cartKey)}
+                                    onClick={() => handleRemoveItem(item.cartKey)}
                                     style={styles.removeBtn}
                                     title="Quitar del carrito"
                                 >
@@ -317,7 +356,7 @@ export default function WholesaleCart({ cartItems, onUpdateItem, onRemoveItem, o
                     )}
                 </button>
                 <button
-                    onClick={onClearCart}
+                    onClick={handleClearCart}
                     style={{
                         width: '100%',
                         padding: '0.5rem',
