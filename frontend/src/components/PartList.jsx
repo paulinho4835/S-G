@@ -83,15 +83,30 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
         });
     };
 
-    const handleAddToOrder = (part) => {
-        const currentOrders = JSON.parse(localStorage.getItem('pedidos_list') || '[]');
+    const handleAddToOrder = async (part) => {
         const newOrder = {
             ...part,
             order_id: Date.now() + Math.random().toString(36).substring(7),
             order_date: new Date().toISOString()
         };
-        localStorage.setItem('pedidos_list', JSON.stringify([...currentOrders, newOrder]));
-        toast.success('Agregado a Pedidos correctamente');
+        try {
+            await api.createSupplyOrder(newOrder);
+            toast.success('Agregado a Pedidos correctamente');
+        } catch (error) {
+            console.error('Error creating shared supply order:', error);
+            // Respaldo temporal para no perder el pedido si la migración o la red fallan.
+            try {
+                const currentOrders = JSON.parse(localStorage.getItem('pedidos_list') || '[]');
+                localStorage.setItem('pedidos_list', JSON.stringify([
+                    ...(Array.isArray(currentOrders) ? currentOrders : []),
+                    newOrder
+                ]));
+                toast.warning('No se pudo sincronizar; el pedido quedó guardado localmente.');
+            } catch (backupError) {
+                console.error('Error saving local supply order backup:', backupError);
+                toast.error('No se pudo guardar el pedido.');
+            }
+        }
     };
 
     const fetchParts = async () => {

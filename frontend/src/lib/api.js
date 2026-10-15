@@ -244,6 +244,118 @@ export async function deleteSale(saleId) {
 }
 
 // ── MAYORISTA ─────────────────────────────────────────────────────────────────
+// Lista compartida de pedidos a proveedor (migrada desde localStorage).
+const SUPPLY_ORDER_SELECT = 'id, client_order_id, part_id, product_snapshot, quantity, order_date, created_at, updated_at';
+
+function normalizeSupplyQuantity(value) {
+    if (value === '' || value === null || value === undefined) return null;
+    const quantity = Number(value);
+    if (!Number.isSafeInteger(quantity) || quantity < 1) {
+        throw new Error('La cantidad del pedido debe ser un entero mayor o igual a 1');
+    }
+    return quantity;
+}
+
+function buildSupplyOrderRow(order, quantity) {
+    const clientOrderId = String(order.client_order_id ?? order.order_id ?? '').trim();
+    if (!clientOrderId || clientOrderId.length > 100) {
+        throw new Error('El pedido no tiene un identificador válido');
+    }
+
+    const parsedDate = new Date(order.order_date || Date.now());
+    if (Number.isNaN(parsedDate.getTime())) {
+        throw new Error('El pedido tiene una fecha inválida');
+    }
+
+    const parsedPartId = Number(order.part_id ?? order.id);
+    const snapshot = {
+        codigo: order.codigo ?? null,
+        codigo_producto: order.codigo_producto ?? null,
+        name: order.name ?? null,
+        internal_measure: order.internal_measure ?? null,
+        external_measure: order.external_measure ?? null,
+        height: order.height ?? null,
+        stock: order.stock ?? null,
+    };
+
+    return {
+        client_order_id: clientOrderId,
+        part_id: Number.isSafeInteger(parsedPartId) ? parsedPartId : null,
+        product_snapshot: snapshot,
+        quantity: normalizeSupplyQuantity(quantity),
+        order_date: parsedDate.toISOString(),
+    };
+}
+
+export async function getSupplyOrders() {
+    const PAGE = 1000;
+    let all = [];
+    let from = 0;
+
+    while (true) {
+        const { data, error } = await supabase
+            .from('supply_orders')
+            .select(SUPPLY_ORDER_SELECT)
+            .order('order_date', { ascending: true })
+            .order('id', { ascending: true })
+            .range(from, from + PAGE - 1);
+        if (error) throw new Error(error.message);
+        all = all.concat(data || []);
+        if (!data || data.length < PAGE) break;
+        from += PAGE;
+    }
+
+    return { message: 'success', data: all };
+}
+
+export async function createSupplyOrder(order, quantity = null) {
+    const { data, error } = await supabase
+        .from('supply_orders')
+        .insert(buildSupplyOrderRow(order, quantity))
+        .select(SUPPLY_ORDER_SELECT)
+        .single();
+    if (error) throw new Error(error.message);
+    return { message: 'success', data };
+}
+
+export async function importSupplyOrders(orders, quantities = {}) {
+    if (!Array.isArray(orders) || orders.length === 0) return { message: 'success', data: [] };
+
+    const rows = orders.map(order => {
+        const rawQuantity = quantities[order.order_id] ?? order.quantity ?? null;
+        let quantity = null;
+        try {
+            quantity = normalizeSupplyQuantity(rawQuantity);
+        } catch (error) {
+            console.warn(`Cantidad local inválida para el pedido ${order.order_id}; se importará vacía.`);
+        }
+        return buildSupplyOrderRow(order, quantity);
+    });
+    const { data, error } = await supabase
+        .from('supply_orders')
+        .upsert(rows, { onConflict: 'client_order_id', ignoreDuplicates: true })
+        .select(SUPPLY_ORDER_SELECT);
+    if (error) throw new Error(error.message);
+    return { message: 'success', data: data || [] };
+}
+
+export async function updateSupplyOrder(orderId, quantity) {
+    const { data, error } = await supabase
+        .from('supply_orders')
+        .update({ quantity: normalizeSupplyQuantity(quantity), updated_at: new Date().toISOString() })
+        .eq('id', orderId)
+        .select(SUPPLY_ORDER_SELECT)
+        .single();
+    if (error) throw new Error(error.message);
+    return { message: 'success', data };
+}
+
+export async function deleteSupplyOrder(orderId) {
+    const { error } = await supabase.from('supply_orders').delete().eq('id', orderId);
+    if (error) throw new Error(error.message);
+    return { message: 'success' };
+}
+
 export async function getWholesaleOrders({ cliente } = {}) {
     let query = supabase.from('wholesale_orders').select('*').order('order_date', { ascending: false });
     if (cliente) query = query.ilike('cliente', `%${cliente}%`);

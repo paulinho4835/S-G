@@ -1,51 +1,149 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Download, Trash2, Inbox } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
+import * as api from '../lib/api';
+import { toast } from '../lib/toast';
+
+function readLegacyOrders() {
+    try {
+        const orders = JSON.parse(localStorage.getItem('pedidos_list') || '[]');
+        const quantities = JSON.parse(localStorage.getItem('pedidos_quantities') || '{}');
+        return {
+            orders: Array.isArray(orders) ? orders : [],
+            quantities: quantities && typeof quantities === 'object' ? quantities : {},
+        };
+    } catch (error) {
+        console.error('Legacy orders could not be read:', error);
+        return { orders: [], quantities: {} };
+    }
+}
+
+function mapSupplyOrder(row) {
+    const snapshot = row.product_snapshot && typeof row.product_snapshot === 'object'
+        ? row.product_snapshot
+        : {};
+    return {
+        ...snapshot,
+        order_id: row.client_order_id,
+        server_id: row.id,
+        part_id: row.part_id,
+        order_date: row.order_date,
+        quantity: row.quantity,
+    };
+}
 
 export default function OrdersList() {
     const [orders, setOrders] = useState([]);
     const [quantities, setQuantities] = useState({}); // { order_id: qty }
     const [confirmModal, setConfirmModal] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const saved = localStorage.getItem('pedidos_list');
-        if (saved) {
-            const parsedOrders = JSON.parse(saved);
-            parsedOrders.sort((a, b) => new Date(a.order_date) - new Date(b.order_date));
-            setOrders(parsedOrders);
-        }
-        const savedQty = localStorage.getItem('pedidos_quantities');
-        if (savedQty) {
-            setQuantities(JSON.parse(savedQty));
-        }
+        let cancelled = false;
+        const loadOrders = async () => {
+            const legacy = readLegacyOrders();
+            try {
+                // Importa la copia local una sola vez. El upsert es idempotente.
+                if (legacy.orders.length > 0) {
+                    await api.importSupplyOrders(legacy.orders, legacy.quantities);
+                }
+
+                const response = await api.getSupplyOrders();
+                if (cancelled) return;
+
+                const serverOrders = (response.data || []).map(mapSupplyOrder);
+                const serverQuantities = Object.fromEntries(
+                    serverOrders
+                        .filter(order => order.quantity !== null && order.quantity !== undefined)
+                        .map(order => [order.order_id, String(order.quantity)])
+                );
+                setOrders(serverOrders);
+                setQuantities(serverQuantities);
+
+                // Solo elimina la copia local después de confirmar que la lectura remota funcionó.
+                if (legacy.orders.length > 0) {
+                    localStorage.removeItem('pedidos_list');
+                    localStorage.removeItem('pedidos_quantities');
+                }
+            } catch (error) {
+                console.error('Error loading shared orders:', error);
+                if (cancelled) return;
+                setOrders(legacy.orders);
+                setQuantities(legacy.quantities);
+                toast.error(legacy.orders.length > 0
+                    ? 'No se pudo sincronizar; se muestra la copia local.'
+                    : 'No se pudo cargar la lista de pedidos.');
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+
+        loadOrders();
+        return () => { cancelled = true; };
     }, []);
 
-    const updateOrders = (newOrders) => {
-        setOrders(newOrders);
+    const saveLocalBackup = (newOrders, newQuantities) => {
         localStorage.setItem('pedidos_list', JSON.stringify(newOrders));
+        localStorage.setItem('pedidos_quantities', JSON.stringify(newQuantities));
     };
 
     const updateQuantity = (order_id, value) => {
         const newQty = { ...quantities, [order_id]: value };
         setQuantities(newQty);
-        localStorage.setItem('pedidos_quantities', JSON.stringify(newQty));
+        const order = orders.find(item => item.order_id === order_id);
+        if (!order?.server_id) saveLocalBackup(orders, newQty);
     };
 
-    const handleDelete = (id) => {
+    const saveQuantity = async (order_id) => {
+        const order = orders.find(item => item.order_id === order_id);
+        if (!order?.server_id) return;
+        try {
+            await api.updateSupplyOrder(order.server_id, quantities[order_id] ?? '');
+        } catch (error) {
+            console.error('Error updating supply order quantity:', error);
+            saveLocalBackup(orders, quantities);
+            toast.error('No se pudo sincronizar la cantidad; quedó guardada localmente.');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        const order = orders.find(item => item.order_id === id);
+        if (order?.server_id) {
+            try {
+                await api.deleteSupplyOrder(order.server_id);
+            } catch (error) {
+                console.error('Error deleting supply order:', error);
+                toast.error('No se pudo quitar el pedido.');
+                return;
+            }
+        }
+
         const newOrders = orders.filter(o => o.order_id !== id);
         const newQty = { ...quantities };
         delete newQty[id];
-        updateOrders(newOrders);
+        setOrders(newOrders);
         setQuantities(newQty);
-        localStorage.setItem('pedidos_quantities', JSON.stringify(newQty));
+        if (!order?.server_id) saveLocalBackup(newOrders, newQty);
     };
 
     const handleClear = () => {
         setConfirmModal({
             message: '¿Estás seguro de que deseas vaciar toda la lista de pedidos?',
-            onConfirm: () => {
-                updateOrders([]);
+            onConfirm: async () => {
+                try {
+                    await Promise.all(
+                        orders
+                            .filter(order => order.server_id)
+                            .map(order => api.deleteSupplyOrder(order.server_id))
+                    );
+                } catch (error) {
+                    console.error('Error clearing supply orders:', error);
+                    toast.error('No se pudo vaciar toda la lista.');
+                    return;
+                }
+                setOrders([]);
                 setQuantities({});
+                localStorage.removeItem('pedidos_list');
                 localStorage.removeItem('pedidos_quantities');
                 setConfirmModal(null);
             }
@@ -107,7 +205,11 @@ export default function OrdersList() {
                 </div>
             </div>
 
-            {orders.length === 0 ? (
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                    Cargando pedidos...
+                </div>
+            ) : orders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
                     <Inbox size={40} strokeWidth={1.2} />
                     <p style={{ margin: 0 }}>No hay pedidos en la lista.<br /><span style={{ fontSize: '0.9rem' }}>Usa el botón <strong>Pedido</strong> en la tabla de Productos.</span></p>
@@ -153,6 +255,7 @@ export default function OrdersList() {
                                             placeholder="Ej. 10"
                                             value={quantities[order.order_id] || ''}
                                             onChange={e => updateQuantity(order.order_id, e.target.value)}
+                                            onBlur={() => saveQuantity(order.order_id)}
                                             style={{
                                                 width: '90px',
                                                 padding: '5px 8px',
