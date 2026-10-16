@@ -5,7 +5,7 @@ import { SkeletonTable } from './Skeleton';
 import { toast } from '../lib/toast';
 import * as api from '../lib/api';
 
-function SalesHistory() {
+function SalesHistory({ isAdmin = false }) {
     const [sales, setSales] = useState([]);
     // Split date state
     const [startDate, setStartDate] = useState('');
@@ -58,7 +58,7 @@ function SalesHistory() {
 
     const handleReturn = (saleId) => {
         setConfirmModal({
-            message: '¿Seguro que deseas realizar la devolución de esta venta? El stock será restaurado.',
+            message: '¿Seguro que deseas corregir esta venta mediante devolución? El stock será restaurado y la venta quedará conservada como Devuelta.',
             onConfirm: async () => {
                 setConfirmModal(null);
                 try {
@@ -267,13 +267,15 @@ function SalesHistory() {
                                                 >
                                                     Devolución
                                                 </button>
-                                                <button
-                                                    onClick={() => handleDelete(sale.id)}
-                                                    style={{ backgroundColor: '#7f1d1d', fontSize: '0.8rem', padding: '4px 8px', border: '1px solid #ff4444' }}
-                                                    title="Eliminar venta permanentemente"
-                                                >
-                                                    Eliminar
-                                                </button>
+                                                {isAdmin && (
+                                                    <button
+                                                        onClick={() => handleDelete(sale.id)}
+                                                        style={{ backgroundColor: '#7f1d1d', fontSize: '0.8rem', padding: '4px 8px', border: '1px solid #ff4444' }}
+                                                        title="Eliminar venta permanentemente"
+                                                    >
+                                                        Eliminar
+                                                    </button>
+                                                )}
                                             </>
                                         )}
                                     </td>

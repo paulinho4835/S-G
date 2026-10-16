@@ -237,7 +237,7 @@ function App() {
                 {view === 'products' && (
                     <PartList refreshTrigger={refreshKey} onAddToWholesaleCart={handleAddToCart} />
                 )}
-                {view === 'sales' && <SalesHistory />}
+                {view === 'sales' && <SalesHistory isAdmin={isAdmin} />}
                 {view === 'dashboard' && <Dashboard onAlertClick={handleAlertClick} />}
                 {view === 'orders' && <OrdersList />}
                 {view === 'wholesale' && (

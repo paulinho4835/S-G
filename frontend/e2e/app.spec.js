@@ -29,7 +29,7 @@ function json(route, body, status = 200) {
     });
 }
 
-async function mockSupabase(page, { role = 'admin' } = {}) {
+async function mockSupabase(page, { role = 'admin', sales = [] } = {}) {
     const user = {
         id: '00000000-0000-0000-0000-000000000001',
         aud: 'authenticated',
@@ -72,7 +72,7 @@ async function mockSupabase(page, { role = 'admin' } = {}) {
 
         if (resource === 'parts' && request.method() === 'GET') return json(route, [TEST_PART]);
         if (resource === 'supply_orders' && request.method() === 'GET') return json(route, []);
-        if (resource === 'sales' && request.method() === 'GET') return json(route, []);
+        if (resource === 'sales' && request.method() === 'GET') return json(route, sales);
         if (resource === 'wholesale_orders' && request.method() === 'GET') return json(route, []);
         if (resource === 'quotations' && request.method() === 'GET') return json(route, []);
         if (resource === 'stock_movements' && request.method() === 'GET') return json(route, []);
@@ -126,6 +126,45 @@ test('admin puede navegar por los módulos principales y ve mantenimiento', asyn
 test('un usuario no administrador no ve el módulo de mantenimiento', async ({ page }) => {
     await login(page, 'user');
     await expect(page.getByRole('button', { name: 'Mantenimiento', exact: true })).toHaveCount(0);
+});
+
+test('un usuario sin rol puede corregir una venta mediante devolución, no eliminarla', async ({ page }) => {
+    await mockSupabase(page, {
+        role: 'user',
+        sales: [{
+            id: 101,
+            part_id: TEST_PART.id,
+            sale_date: '2026-10-16T12:00:00.000Z',
+            codigo_producto: TEST_PART.codigo_producto,
+            codigo: TEST_PART.codigo,
+            quantity: 1,
+            unit_price: 15,
+            total_price: 15,
+            invoice_type: 'SIN_FACTURA',
+            refunded: false,
+            parts: {
+                name: TEST_PART.name,
+                codigo: TEST_PART.codigo,
+                codigo_producto: TEST_PART.codigo_producto,
+                aplicacion: TEST_PART.aplicacion,
+                cost_price: TEST_PART.cost_price,
+            },
+        }],
+    });
+    await page.goto('/');
+    await page.getByPlaceholder('admin@retenes.app').fill(TEST_EMAIL);
+    await page.getByPlaceholder('Contraseña').fill(TEST_PASSWORD);
+    await page.getByRole('button', { name: 'Ingresar' }).click();
+    await page.getByRole('button', { name: 'Ventas', exact: true }).click();
+
+    const row = page.getByRole('row').filter({ hasText: 'TEST-001' });
+    await expect(row).toBeVisible();
+    await expect(row.getByRole('button', { name: 'Devolución' })).toBeVisible();
+    await expect(row.getByRole('button', { name: 'Eliminar' })).toHaveCount(0);
+
+    await row.getByRole('button', { name: 'Devolución' }).click();
+    await expect(page.getByText(/corregir esta venta mediante devolución/)).toBeVisible();
+    await page.getByRole('button', { name: 'Cancelar', exact: true }).last().click();
 });
 
 test('reducir stock exige confirmación antes de enviar la operación', async ({ page }) => {
