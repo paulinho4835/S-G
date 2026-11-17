@@ -1,7 +1,7 @@
 # Graph Report - Felipillo  (2026-11-17)
 
 ## Corpus Check
-- 105 files · ~124,981 words
+- 105 files · ~124,824 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 18 file(s) not represented in the graph (top: (none) 14, .css 2, .code-workspace 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `02d84982`
+- Built from commit: `3a793793`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -89,15 +89,15 @@
 10. `BankQrSettings()` - 12 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Task 10: Configurar URL del PDF en Edge Function` --references--> `downloadQuotationPdf()`  [INFERRED]
-  docs/superpowers/plans/2026-05-25-web-migration-vercel-supabase.md → frontend/src/lib/api.js
 - `Task 7: Actualizar componentes para usar api.js` --references--> `getQuotations()`  [INFERRED]
   docs/superpowers/plans/2026-05-25-web-migration-vercel-supabase.md → frontend/src/lib/api.js
 - `Task 7: Actualizar componentes para usar api.js` --references--> `getWholesaleOrders()`  [INFERRED]
   docs/superpowers/plans/2026-05-25-web-migration-vercel-supabase.md → frontend/src/lib/api.js
+- `Task 10: Configurar URL del PDF en Edge Function` --references--> `downloadQuotationPdf()`  [INFERRED]
+  docs/superpowers/plans/2026-05-25-web-migration-vercel-supabase.md → frontend/src/lib/api.js
 - `Dashboard()` --calls--> `getDeadStock()`  [EXTRACTED]
   frontend/src/components/Dashboard.jsx → frontend/src/lib/api.js
-- `Dashboard()` --calls--> `getSalesSummary()`  [EXTRACTED]
+- `Dashboard()` --calls--> `getParts()`  [EXTRACTED]
   frontend/src/components/Dashboard.jsx → frontend/src/lib/api.js
 
 ## Import Cycles

@@ -962,33 +962,6 @@ tbody tr:hover {
   font-size: 1.25rem;
 }
 
-.multi-sale-qr-progress {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.7rem 1.35rem;
-  border-bottom: 1px solid var(--border-color);
-  background: rgba(4, 12, 23, 0.24);
-}
-
-.multi-sale-qr-progress span {
-  flex: 1;
-  padding: 0.5rem 0.7rem;
-  border-radius: 8px;
-  background: var(--surface-2);
-  color: var(--text-secondary);
-  font-size: 0.76rem;
-  font-weight: 700;
-  text-align: center;
-}
-
-.multi-sale-qr-progress span.active {
-  background: var(--accent-dim);
-  color: var(--accent-color);
-  box-shadow: inset 0 0 0 1px rgba(212, 144, 10, 0.32);
-}
-
-.multi-sale-qr-progress span.complete { color: #34d399; }
-
 .multi-sale-qr-close,
 .multi-sale-qr-item > button {
   display: grid;
@@ -1006,13 +979,6 @@ tbody tr:hover {
 .multi-sale-qr-body {
   overflow-y: auto;
   padding: 1.15rem 1.35rem;
-}
-
-.multi-sale-qr-instruction {
-  margin: 0 0 1rem;
-  color: var(--text-secondary);
-  font-size: 0.86rem;
-  line-height: 1.5;
 }
 
 .multi-sale-qr-label,
@@ -1136,8 +1102,7 @@ tbody tr:hover {
 
 .multi-sale-qr-review-heading h3 { margin: 0; color: var(--text-primary); font-size: 0.95rem; }
 
-.multi-sale-qr-review-heading button,
-.multi-sale-qr-back {
+.multi-sale-qr-review-heading button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1152,41 +1117,6 @@ tbody tr:hover {
   font-weight: 700;
   cursor: pointer;
 }
-
-.multi-sale-qr-review-items {
-  display: grid;
-  gap: 0.45rem;
-  max-height: 220px;
-  overflow: auto;
-  margin-bottom: 1.15rem;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  background: rgba(4, 12, 23, 0.36);
-}
-
-.multi-sale-qr-review-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.multi-sale-qr-review-item:last-child { border-bottom: 0; }
-
-.multi-sale-qr-review-item span { display: grid; gap: 0.2rem; min-width: 0; }
-
-.multi-sale-qr-review-item span strong {
-  overflow: hidden;
-  color: var(--text-primary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.multi-sale-qr-review-item small { color: var(--text-secondary); font-size: 0.73rem; }
-.multi-sale-qr-review-item > strong { color: #34d399; white-space: nowrap; }
 
 .multi-sale-qr-empty,
 .multi-sale-qr-notice {
@@ -1279,21 +1209,11 @@ tbody tr:hover {
   grid-template-columns: minmax(140px, 0.45fr) minmax(0, 1fr);
 }
 
-.multi-sale-qr-payment-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.55rem;
-}
-
-.multi-sale-qr-payment-actions .multi-sale-qr-submit { min-width: 240px; }
-
 @media (max-width: 680px) {
   .multi-sale-qr-overlay { padding: 0.4rem; }
   .multi-sale-qr-panel { max-height: 96dvh; border-radius: 14px; }
   .multi-sale-qr-header,
   .multi-sale-qr-footer { padding: 0.85rem; }
-  .multi-sale-qr-progress { padding: 0.65rem 0.85rem; }
   .multi-sale-qr-body { padding: 0.9rem 0.85rem; }
   .multi-sale-qr-item {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 38px;
@@ -1309,7 +1229,45 @@ tbody tr:hover {
   .multi-sale-qr-total { display: flex; align-items: baseline; justify-content: space-between; }
   .multi-sale-qr-methods > div { display: grid; grid-template-columns: 1fr 1fr; }
   .multi-sale-qr-submit { width: 100%; }
-  .multi-sale-qr-payment-actions { align-items: stretch; flex-direction: column-reverse; }
-  .multi-sale-qr-payment-actions .multi-sale-qr-submit { min-width: 0; }
-  .multi-sale-qr-back { width: 100%; }
+}
+
+.multi-sale-row-button,
+.multi-sale-cart-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px solid var(--accent-color);
+  border-radius: 6px;
+  background: var(--accent-dim);
+  color: var(--accent-color);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.multi-sale-row-button {
+  padding: 5px 9px;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.multi-sale-row-button.selected {
+  border-color: #34d399;
+  background: rgba(20, 150, 90, 0.18);
+  color: #6ee7b7;
+}
+
+.multi-sale-row-button:disabled { opacity: 0.42; cursor: not-allowed; }
+
+.multi-sale-cart-trigger {
+  min-height: 34px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.multi-sale-cart-trigger strong {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
 }

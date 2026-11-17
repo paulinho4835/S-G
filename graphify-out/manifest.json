@@ -228,9 +228,9 @@
     "semantic_hash": "52879fd49c6148d6693799ac00698484"
   },
   "frontend/src/components/PartList.jsx": {
-    "mtime": 1794951221.949858,
-    "seen": 1794951409.9353197,
-    "ast_hash": "aed0a679babbefb4ddeea50fbc773498",
+    "mtime": 1794951894.7510085,
+    "seen": 1794951965.173504,
+    "ast_hash": "19f80e4425e8e91e77b52e14de8fb509",
     "semantic_hash": ""
   },
   "frontend/src/components/QuotationsList.jsx": {
@@ -558,9 +558,9 @@
     "semantic_hash": ""
   },
   "frontend/src/components/MultiSaleQrModal.jsx": {
-    "mtime": 1794951172.4838212,
-    "seen": 1794951409.9353197,
-    "ast_hash": "8f4280b3eeba16b9562f2f76cbfa59b4",
+    "mtime": 1794951831.887663,
+    "seen": 1794951965.173504,
+    "ast_hash": "73a8c1406d84ad43aec7258003af9187",
     "semantic_hash": ""
   },
   "GUIA_INSTALACION.md": {

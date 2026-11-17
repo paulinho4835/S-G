@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-    Package, Search, FilterX, Download, Store, Pin,
+    Package, Search, FilterX, Download, Store, Pin, Check,
     ShoppingCart, ClipboardList, Truck, X, ChevronDown
 } from 'lucide-react';
 import * as api from '../lib/api';
@@ -24,6 +24,7 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
     const [filters, setFilters] = useState({ internal: '', external: '', height: '' });
     const [selectedPartForSale, setSelectedPartForSale] = useState(null);
     const [multiSaleQrOpen, setMultiSaleQrOpen] = useState(false);
+    const [multiSaleItems, setMultiSaleItems] = useState([]);
     const [selectedPartForEdit, setSelectedPartForEdit] = useState(null);
     const [selectedPartForRestock, setSelectedPartForRestock] = useState(null);
     const [selectedPartForKardex, setSelectedPartForKardex] = useState(null);
@@ -266,6 +267,28 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
         }
     };
 
+    const handleToggleMultiSalePart = (part) => {
+        const exists = multiSaleItems.some((item) => Number(item.id) === Number(part.id));
+        if (exists) {
+            setMultiSaleItems((current) => current.filter((item) => Number(item.id) !== Number(part.id)));
+            toast.info(`"${part.codigo_producto || part.name}" quitado del carrito.`);
+            return;
+        }
+        if (Number(part.stock || 0) <= 0) {
+            toast.error('Este producto no tiene stock disponible.');
+            return;
+        }
+        if (multiSaleItems.length >= 300) {
+            toast.error('Una venta puede incluir como máximo 300 productos.');
+            return;
+        }
+        const newItem = { ...part, quantity: 1, unit_price: part.pv_geli || part.cost_price || '' };
+        setMultiSaleItems((current) => current.some((item) => Number(item.id) === Number(part.id))
+            ? current
+            : [...current, newItem]);
+        toast.success(`"${part.codigo_producto || part.name}" agregado al carrito.`);
+    };
+
     const handleRestock = async (qty) => {
         const part = selectedPartForRestock;
         if (!part) return;
@@ -358,14 +381,16 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                             <Download size={14} />
                             Excel
                         </button>
-                        {!wholesaleMode && (
+                        {!wholesaleMode && multiSaleItems.length > 0 && (
                             <button
                                 type="button"
+                                className="multi-sale-cart-trigger"
                                 onClick={() => setMultiSaleQrOpen(true)}
-                                style={{ ...btnBase, backgroundColor: 'var(--accent-dim)', color: 'var(--accent-color)', border: '1px solid var(--accent-color)' }}
-                                title="Agrega productos al carrito y después elige efectivo o QR"
+                                title="Abrir el carrito y elegir efectivo o QR"
                             >
-                                <ShoppingCart size={14} /> Venta múltiple
+                                <ShoppingCart size={15} />
+                                <span>Carrito ({multiSaleItems.length})</span>
+                                <strong>Bs. {multiSaleItems.reduce((sum, item) => sum + (Number(item.unit_price) || 0) * (Number(item.quantity) || 0), 0).toFixed(2)}</strong>
                             </button>
                         )}
                     </div>
@@ -480,7 +505,8 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
             )}
             {multiSaleQrOpen && (
                 <MultiSaleQrModal
-                    parts={parts}
+                    items={multiSaleItems}
+                    onItemsChange={setMultiSaleItems}
                     onClose={() => setMultiSaleQrOpen(false)}
                     onRegistered={(payment) => {
                         toast.success(payment?.method === 'cash'
@@ -528,7 +554,9 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                                 </tr>
                             </thead>
                             <tbody>
-                                {paginatedParts.map(part => (
+                                {paginatedParts.map(part => {
+                                    const inMultiSaleCart = multiSaleItems.some((item) => Number(item.id) === Number(part.id));
+                                    return (
                                     <tr
                                         key={part.id}
                                         className={selectedRowId === part.id ? 'selected-row' : ''}
@@ -589,6 +617,17 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                                                 ) : (
                                                     <>
                                                         <button onClick={() => setSelectedPartForSale(part)} disabled={(part.stock ?? 0) <= 0} style={btnVender}>Vender</button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => { event.stopPropagation(); handleToggleMultiSalePart(part); }}
+                                                            disabled={!inMultiSaleCart && (part.stock ?? 0) <= 0}
+                                                            className={`multi-sale-row-button${inMultiSaleCart ? ' selected' : ''}`}
+                                                            title={inMultiSaleCart ? 'Quitar este producto del carrito' : 'Agregar este producto al carrito de venta múltiple'}
+                                                            aria-pressed={inMultiSaleCart}
+                                                        >
+                                                            {inMultiSaleCart ? <Check size={13} /> : <ShoppingCart size={13} />}
+                                                            {inMultiSaleCart ? 'En carrito' : 'Venta múltiple'}
+                                                        </button>
                                                         <button onClick={() => setSelectedPartForEdit(part)} style={btnEdit}>Modificar</button>
                                                         <button className="danger" style={{ ...btnDanger, fontSize: '0.78rem', padding: '5px 10px' }} onClick={() => handleDelete(part.id)}>Eliminar</button>
                                                         <button onClick={() => { setStockMode('add'); setSelectedPartForRestock(part); }} style={btnSuccess}>+ Stock</button>
@@ -604,7 +643,8 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                         </div>
