@@ -2,6 +2,30 @@ import { supabase } from './supabase';
 
 const TOLERANCE = 0.5;
 
+function localDateKey(value = new Date()) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function localDayRange(dateKey) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+    if (!match) throw new Error('Fecha inválida.');
+
+    const [, yearText, monthText, dayText] = match;
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    const start = new Date(year, month - 1, day);
+    if (start.getFullYear() !== year || start.getMonth() !== month - 1 || start.getDate() !== day) {
+        throw new Error('Fecha inválida.');
+    }
+
+    const end = new Date(year, month - 1, day + 1);
+    return { start: start.toISOString(), end: end.toISOString() };
+}
+
 // ── PARTES ────────────────────────────────────────────────────────────────────
 export async function getParts({ search, internal, external, height } = {}) {
     const PAGE = 1000;
@@ -179,18 +203,18 @@ export async function getSales({ date, startDate, endDate } = {}) {
         .select('*, parts(name, codigo, codigo_producto, aplicacion, cost_price)')
         .order('sale_date');
 
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: tz });
-
     if (!date && !startDate && !endDate) {
-        query = query.gte('sale_date', today).lte('sale_date', today + 'T23:59:59.999Z');
+        const range = localDayRange(localDateKey());
+        query = query.gte('sale_date', range.start).lt('sale_date', range.end);
     } else if (date === 'today') {
-        query = query.gte('sale_date', today).lte('sale_date', today + 'T23:59:59.999Z');
+        const range = localDayRange(localDateKey());
+        query = query.gte('sale_date', range.start).lt('sale_date', range.end);
     } else if (date) {
-        query = query.gte('sale_date', date).lte('sale_date', date + 'T23:59:59.999Z');
+        const range = localDayRange(date);
+        query = query.gte('sale_date', range.start).lt('sale_date', range.end);
     } else {
-        if (startDate) query = query.gte('sale_date', startDate);
-        if (endDate)   query = query.lte('sale_date', endDate + 'T23:59:59.999Z');
+        if (startDate) query = query.gte('sale_date', localDayRange(startDate).start);
+        if (endDate)   query = query.lt('sale_date', localDayRange(endDate).end);
     }
 
     const { data, error } = await query;
@@ -204,6 +228,19 @@ export async function getSales({ date, startDate, endDate } = {}) {
         cost_price:      s.parts?.cost_price,
     }));
     return { message: 'success', data: flattened };
+}
+
+export async function getUnregisteredQrPayments() {
+    const { data, error } = await supabase
+        .from('qr_payments')
+        .select('id,kind,amount,currency,description,paid_at,created_at,register_error')
+        .eq('status', 'paid')
+        .in('kind', ['sale', 'wholesale'])
+        .is('registered_at', null)
+        .order('paid_at', { ascending: false })
+        .limit(50);
+    if (error) throw new Error(error.message);
+    return data || [];
 }
 
 export async function getSalesSummary(period = 'today') {

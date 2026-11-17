@@ -3,6 +3,7 @@ import { Pencil } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import { SkeletonTable } from './Skeleton';
 import { toast } from '../lib/toast';
+import { checkBankQr } from '../lib/bankQr';
 import * as api from '../lib/api';
 
 function SalesHistory({ isAdmin = false }) {
@@ -13,6 +14,9 @@ function SalesHistory({ isAdmin = false }) {
     const [searchCode, setSearchCode] = useState('');
     const [filterType, setFilterType] = useState('ALL'); // 'ALL', 'QR_ONLY'
     const [loading, setLoading] = useState(false);
+    const [unregisteredQrPayments, setUnregisteredQrPayments] = useState([]);
+    const [qrPaymentsError, setQrPaymentsError] = useState(null);
+    const [retryingQrPayment, setRetryingQrPayment] = useState(null);
     const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm }
     const [editingInvoice, setEditingInvoice] = useState(null); // saleId being edited
 
@@ -41,9 +45,39 @@ function SalesHistory({ isAdmin = false }) {
         }
     };
 
+    const fetchUnregisteredQrPayments = async () => {
+        try {
+            setUnregisteredQrPayments(await api.getUnregisteredQrPayments());
+            setQrPaymentsError(null);
+        } catch (err) {
+            console.error('Error fetching paid QR payments awaiting registration:', err);
+            setQrPaymentsError(err.message || 'No se pudieron consultar los pagos QR pendientes.');
+        }
+    };
+
     useEffect(() => {
         fetchSales();
+        fetchUnregisteredQrPayments();
     }, []);
+
+    const handleRetryQrRegistration = async (paymentId) => {
+        setRetryingQrPayment(paymentId);
+        try {
+            const payment = await checkBankQr(paymentId);
+            if (!payment?.registered_at) {
+                throw new Error(payment?.register_error || 'La venta todavía no pudo registrarse.');
+            }
+            toast.success(payment.wholesale_order_id
+                ? `Pago QR registrado como venta mayorista #${payment.wholesale_order_id}.`
+                : `Pago QR registrado como venta #${payment.sale_id}.`);
+            await Promise.all([fetchSales(), fetchUnregisteredQrPayments()]);
+        } catch (err) {
+            toast.error('No se pudo registrar el pago QR. Revisa el detalle en la sección de pagos pendientes.');
+            await fetchUnregisteredQrPayments();
+        } finally {
+            setRetryingQrPayment(null);
+        }
+    };
 
     const handleInvoiceTypeChange = async (saleId, newType) => {
         try {
@@ -138,6 +172,59 @@ function SalesHistory({ isAdmin = false }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                 <h2 style={{ margin: 0 }}>Ventas del dia</h2>
             </div>
+
+            {(unregisteredQrPayments.length > 0 || qrPaymentsError) && (
+                <section
+                    aria-label="Pagos QR confirmados pendientes de registrar"
+                    style={{ marginBottom: '1.25rem', padding: '1rem', border: '1px solid #f59e0b', borderRadius: '8px', background: 'rgba(120, 53, 15, 0.16)' }}
+                >
+                    <h3 style={{ margin: '0 0 0.5rem', color: '#fbbf24' }}>Pagos QR confirmados pendientes</h3>
+                    {qrPaymentsError ? (
+                        <p role="alert" style={{ margin: 0, color: '#fca5a5' }}>
+                            No se pudo consultar si hay pagos QR pendientes: {qrPaymentsError}
+                        </p>
+                    ) : (
+                        <>
+                            <p style={{ margin: '0 0 0.75rem', color: '#e5e7eb' }}>
+                                El banco confirmó estos pagos, pero todavía no tienen una venta en el historial. Reintenta el registro para conciliarlos.
+                            </p>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+                                            <th style={{ padding: '6px' }}>Fecha de pago</th>
+                                            <th style={{ padding: '6px' }}>Detalle</th>
+                                            <th style={{ padding: '6px' }}>Monto</th>
+                                            <th style={{ padding: '6px' }}>Error</th>
+                                            <th style={{ padding: '6px' }}>Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {unregisteredQrPayments.map(payment => (
+                                            <tr key={payment.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
+                                                <td style={{ padding: '6px' }}>{formatDate(payment.paid_at || payment.created_at)}</td>
+                                                <td style={{ padding: '6px' }}>{payment.description || (payment.kind === 'wholesale' ? 'Venta mayorista' : 'Venta')}</td>
+                                                <td style={{ padding: '6px' }}>Bs. {Number(payment.amount || 0).toFixed(2)}</td>
+                                                <td style={{ padding: '6px', color: '#fca5a5' }}>{payment.register_error || 'Pendiente de registro'}</td>
+                                                <td style={{ padding: '6px' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="primary"
+                                                        disabled={retryingQrPayment !== null}
+                                                        onClick={() => handleRetryQrRegistration(payment.id)}
+                                                    >
+                                                        {retryingQrPayment === payment.id ? 'Registrando…' : 'Reintentar registro'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                    )}
+                </section>
+            )}
 
             <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', alignItems: 'end', flexWrap: 'wrap', backgroundColor: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
