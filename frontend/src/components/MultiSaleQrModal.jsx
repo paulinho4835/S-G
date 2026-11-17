@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, QrCode, Search, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Plus, QrCode, Search, Trash2, X } from 'lucide-react';
 import * as api from '../lib/api';
 import { isBankQrEnabled } from '../lib/bankQr';
 import { toast } from '../lib/toast';
 import BankQrCheckout from './BankQrCheckout';
-import ConfirmDialog from './ConfirmDialog';
 
 const money = (value) => `Bs. ${Number(value || 0).toFixed(2)}`;
 const itemName = (part) => part.codigo_producto || part.name || part.codigo || `Producto #${part.id}`;
@@ -15,8 +14,8 @@ export default function MultiSaleQrModal({ parts, onClose, onRegistered }) {
     const [search, setSearch] = useState('');
     const [invoiceType, setInvoiceType] = useState('SIN_FACTURA');
     const [paymentMethod, setPaymentMethod] = useState(null);
+    const [step, setStep] = useState('products');
     const [qrCharge, setQrCharge] = useState(null);
-    const [confirming, setConfirming] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -67,18 +66,10 @@ export default function MultiSaleQrModal({ parts, onClose, onRegistered }) {
 
     const removeItem = (id) => setItems((current) => current.filter((item) => item.id !== id));
 
-    const prepareCharge = () => {
-        if (!paymentMethod) {
-            toast.info('Elige cómo pagará el cliente.');
-            return;
-        }
-        if (paymentMethod === 'qr' && bankQr !== true) {
-            toast.error('Activa el QR dinámico del banco en Mantenimiento para cobrar esta venta.');
-            return;
-        }
+    const validateItems = () => {
         if (items.length === 0) {
             toast.error('Agrega al menos un producto a la venta.');
-            return;
+            return false;
         }
         const invalid = items.find((item) => {
             const quantity = Number(item.quantity);
@@ -88,18 +79,33 @@ export default function MultiSaleQrModal({ parts, onClose, onRegistered }) {
         });
         if (invalid) {
             toast.error(`Revisa cantidad y precio de "${itemName(invalid)}".`);
-            return;
+            return false;
         }
         const underCost = items.find((item) => Number(item.cost_price || 0) > Number(item.unit_price));
         if (underCost) {
             toast.error(`"${itemName(underCost)}" no puede venderse bajo su costo base de ${money(underCost.cost_price)}.`);
-            return;
+            return false;
         }
-        setConfirming(true);
+        return true;
     };
 
-    const confirmSale = async () => {
-        setConfirming(false);
+    const continueToPayment = () => {
+        if (!validateItems()) return;
+        setPaymentMethod(null);
+        setStep('payment');
+    };
+
+    const startPayment = async () => {
+        if (!validateItems()) return;
+        if (!paymentMethod) {
+            toast.info('Elige cómo pagará el cliente.');
+            return;
+        }
+        if (paymentMethod === 'qr' && bankQr !== true) {
+            toast.error('Activa el QR dinámico del banco en Mantenimiento para cobrar esta venta.');
+            return;
+        }
+
         const saleItems = items.map((item) => ({
             part_id: Number(item.id),
             quantity: Number(item.quantity),
@@ -137,179 +143,216 @@ export default function MultiSaleQrModal({ parts, onClose, onRegistered }) {
         );
     }
 
+    const isProductStep = step === 'products';
+
     return (
         <div className="multi-sale-qr-overlay" role="presentation">
             <section className="multi-sale-qr-panel glass-panel" role="dialog" aria-modal="true" aria-labelledby="multi-sale-title">
                 <header className="multi-sale-qr-header">
                     <div>
-                        <span className="multi-sale-qr-eyebrow">EFECTIVO O QR · VARIOS PRODUCTOS</span>
-                        <h2 id="multi-sale-title">Venta múltiple</h2>
+                        <span className="multi-sale-qr-eyebrow">VENTA MÚLTIPLE · PASO {isProductStep ? '1' : '2'} DE 2</span>
+                        <h2 id="multi-sale-title">{isProductStep ? 'Arma el carrito' : 'Elige cómo cobrar'}</h2>
                     </div>
                     <button type="button" className="multi-sale-qr-close" onClick={onClose} aria-label="Cerrar venta múltiple">
                         <X size={19} />
                     </button>
                 </header>
 
-                <div className="multi-sale-qr-body">
-                    {bankQr === false && (
-                        <div className="multi-sale-qr-notice" role="status">
-                            El QR dinámico no está activo. Puedes cobrar en efectivo o activarlo en Mantenimiento.
-                        </div>
-                    )}
-                    {bankQr === null && <p className="multi-sale-qr-muted" role="status">Verificando el QR del banco…</p>}
-
-                    <label className="multi-sale-qr-label" htmlFor="multi-sale-product-search">Agregar producto</label>
-                    <div className="multi-sale-qr-search">
-                        <Search size={17} aria-hidden="true" />
-                        <input
-                            id="multi-sale-product-search"
-                            type="search"
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Busca por código, nombre o marca"
-                            autoComplete="off"
-                        />
-                    </div>
-
-                    {matches.length > 0 && (
-                        <div className="multi-sale-qr-results" aria-label="Resultados de productos">
-                            {matches.map((part) => {
-                                const added = items.some((item) => Number(item.id) === Number(part.id));
-                                const outOfStock = Number(part.stock || 0) <= 0;
-                                return (
-                                    <button
-                                        type="button"
-                                        key={part.id}
-                                        className="multi-sale-qr-result"
-                                        disabled={added || outOfStock}
-                                        onClick={() => addPart(part)}
-                                    >
-                                        <span>
-                                            <strong>{itemName(part)}</strong>
-                                            <small>Stock {part.stock ?? 0} · Precio sugerido {money(part.pv_geli || part.cost_price)}</small>
-                                        </span>
-                                        <Plus size={17} aria-hidden="true" />
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    <div className="multi-sale-qr-cart-heading">
-                        <h3>Detalle de la venta</h3>
-                        <span>{items.length} {items.length === 1 ? 'producto' : 'productos'}</span>
-                    </div>
-
-                    {items.length === 0 ? (
-                        <div className="multi-sale-qr-empty">Busca arriba y agrega los productos que entrarán en este cobro.</div>
-                    ) : (
-                        <div className="multi-sale-qr-items">
-                            {items.map((item) => {
-                                const belowCost = Number(item.unit_price || 0) < Number(item.cost_price || 0);
-                                return (
-                                    <article className="multi-sale-qr-item" key={item.id}>
-                                        <div className="multi-sale-qr-item-title">
-                                            <strong>{itemName(item)}</strong>
-                                            <small>Stock disponible: {item.stock ?? 0}</small>
-                                        </div>
-                                        <label>
-                                            <span>Cantidad</span>
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={item.stock}
-                                                step="1"
-                                                value={item.quantity}
-                                                onChange={(event) => updateItem(item.id, 'quantity', event.target.value)}
-                                            />
-                                        </label>
-                                        <label>
-                                            <span>Precio unitario (Bs.)</span>
-                                            <input
-                                                type="number"
-                                                min={Number(item.cost_price || 0)}
-                                                step="0.01"
-                                                value={item.unit_price}
-                                                className={belowCost ? 'is-invalid' : ''}
-                                                onChange={(event) => updateItem(item.id, 'unit_price', event.target.value)}
-                                            />
-                                        </label>
-                                        <strong className="multi-sale-qr-subtotal">{money(Number(item.unit_price || 0) * Number(item.quantity || 0))}</strong>
-                                        <button type="button" onClick={() => removeItem(item.id)} aria-label={`Quitar ${itemName(item)}`}>
-                                            <Trash2 size={17} />
-                                        </button>
-                                    </article>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    <label className="multi-sale-qr-label" htmlFor="multi-sale-invoice-type">Comprobante</label>
-                    <select
-                        id="multi-sale-invoice-type"
-                        value={invoiceType}
-                        onChange={(event) => setInvoiceType(event.target.value)}
-                    >
-                        <option value="SIN_FACTURA">Venta sin factura</option>
-                        <option value="FACTURA">Venta con factura</option>
-                    </select>
+                <div className="multi-sale-qr-progress" aria-label={`Paso ${isProductStep ? 1 : 2} de 2`}>
+                    <span className={isProductStep ? 'active' : 'complete'}>1. Productos</span>
+                    <span className={!isProductStep ? 'active' : ''}>2. Cobro</span>
                 </div>
 
-                <footer className="multi-sale-qr-footer">
-                    <div className="multi-sale-qr-methods" role="group" aria-label="Método de pago">
-                        <span>¿Cómo pagará el cliente?</span>
-                        <div>
-                            <button
-                                type="button"
-                                className={paymentMethod === 'cash' ? 'multi-sale-pay-option active' : 'multi-sale-pay-option'}
-                                aria-pressed={paymentMethod === 'cash'}
-                                onClick={() => setPaymentMethod('cash')}
-                            >
-                                Efectivo
-                            </button>
-                            <button
-                                type="button"
-                                className={paymentMethod === 'qr' ? 'multi-sale-pay-option active' : 'multi-sale-pay-option'}
-                                aria-pressed={paymentMethod === 'qr'}
-                                disabled={bankQr !== true}
-                                title={bankQr === false ? 'Activa el QR dinámico en Mantenimiento' : undefined}
-                                onClick={() => setPaymentMethod('qr')}
-                            >
-                                <QrCode size={15} /> QR dinámico
+                {isProductStep ? (
+                    <div className="multi-sale-qr-body">
+                        <p className="multi-sale-qr-instruction">Busca y agrega todos los productos. Al terminar, revisarás el total y elegirás efectivo o QR.</p>
+                        <label className="multi-sale-qr-label" htmlFor="multi-sale-product-search">Agregar producto</label>
+                        <div className="multi-sale-qr-search">
+                            <Search size={17} aria-hidden="true" />
+                            <input
+                                id="multi-sale-product-search"
+                                type="search"
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                placeholder="Busca por código, nombre o marca"
+                                autoComplete="off"
+                            />
+                        </div>
+
+                        {matches.length > 0 && (
+                            <div className="multi-sale-qr-results" aria-label="Resultados de productos">
+                                {matches.map((part) => {
+                                    const added = items.some((item) => Number(item.id) === Number(part.id));
+                                    const outOfStock = Number(part.stock || 0) <= 0;
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={part.id}
+                                            className="multi-sale-qr-result"
+                                            disabled={added || outOfStock}
+                                            onClick={() => addPart(part)}
+                                        >
+                                            <span>
+                                                <strong>{itemName(part)}</strong>
+                                                <small>Stock {part.stock ?? 0} · Precio sugerido {money(part.pv_geli || part.cost_price)}</small>
+                                            </span>
+                                            <Plus size={17} aria-hidden="true" />
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        <div className="multi-sale-qr-cart-heading">
+                            <h3>Productos en el carrito</h3>
+                            <span>{items.length} {items.length === 1 ? 'producto' : 'productos'}</span>
+                        </div>
+
+                        {items.length === 0 ? (
+                            <div className="multi-sale-qr-empty">Todavía no agregaste productos. Busca uno arriba para empezar.</div>
+                        ) : (
+                            <div className="multi-sale-qr-items">
+                                {items.map((item) => {
+                                    const belowCost = Number(item.unit_price || 0) < Number(item.cost_price || 0);
+                                    return (
+                                        <article className="multi-sale-qr-item" key={item.id}>
+                                            <div className="multi-sale-qr-item-title">
+                                                <strong>{itemName(item)}</strong>
+                                                <small>Stock disponible: {item.stock ?? 0}</small>
+                                            </div>
+                                            <label>
+                                                <span>Cantidad</span>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={item.stock}
+                                                    step="1"
+                                                    value={item.quantity}
+                                                    onChange={(event) => updateItem(item.id, 'quantity', event.target.value)}
+                                                />
+                                            </label>
+                                            <label>
+                                                <span>Precio unitario (Bs.)</span>
+                                                <input
+                                                    type="number"
+                                                    min={Number(item.cost_price || 0)}
+                                                    step="0.01"
+                                                    value={item.unit_price}
+                                                    className={belowCost ? 'is-invalid' : ''}
+                                                    onChange={(event) => updateItem(item.id, 'unit_price', event.target.value)}
+                                                />
+                                            </label>
+                                            <strong className="multi-sale-qr-subtotal">{money(Number(item.unit_price || 0) * Number(item.quantity || 0))}</strong>
+                                            <button type="button" onClick={() => removeItem(item.id)} aria-label={`Quitar ${itemName(item)}`}>
+                                                <Trash2 size={17} />
+                                            </button>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="multi-sale-qr-body">
+                        {bankQr === false && (
+                            <div className="multi-sale-qr-notice" role="status">
+                                El QR dinámico no está activo. Puedes cobrar en efectivo o activarlo en Mantenimiento.
+                            </div>
+                        )}
+                        {bankQr === null && <p className="multi-sale-qr-muted" role="status">Verificando el QR del banco…</p>}
+
+                        <div className="multi-sale-qr-review-heading">
+                            <h3>Revisa la venta</h3>
+                            <button type="button" onClick={() => setStep('products')}>
+                                <ArrowLeft size={15} /> Editar productos
                             </button>
                         </div>
+                        <div className="multi-sale-qr-review-items">
+                            {items.map((item) => (
+                                <div className="multi-sale-qr-review-item" key={item.id}>
+                                    <span>
+                                        <strong>{itemName(item)}</strong>
+                                        <small>{item.quantity} × {money(item.unit_price)}</small>
+                                    </span>
+                                    <strong>{money(Number(item.quantity) * Number(item.unit_price))}</strong>
+                                </div>
+                            ))}
+                        </div>
+
+                        <label className="multi-sale-qr-label" htmlFor="multi-sale-invoice-type">Comprobante</label>
+                        <select
+                            id="multi-sale-invoice-type"
+                            value={invoiceType}
+                            onChange={(event) => setInvoiceType(event.target.value)}
+                        >
+                            <option value="SIN_FACTURA">Venta sin factura</option>
+                            <option value="FACTURA">Venta con factura</option>
+                        </select>
+
+                        <div className="multi-sale-qr-methods" role="group" aria-label="Método de pago">
+                            <span>¿Cómo pagará el cliente?</span>
+                            <div>
+                                <button
+                                    type="button"
+                                    className={paymentMethod === 'cash' ? 'multi-sale-pay-option active' : 'multi-sale-pay-option'}
+                                    aria-pressed={paymentMethod === 'cash'}
+                                    onClick={() => setPaymentMethod('cash')}
+                                >
+                                    Efectivo
+                                </button>
+                                <button
+                                    type="button"
+                                    className={paymentMethod === 'qr' ? 'multi-sale-pay-option active' : 'multi-sale-pay-option'}
+                                    aria-pressed={paymentMethod === 'qr'}
+                                    disabled={bankQr !== true}
+                                    title={bankQr === false ? 'Activa el QR dinámico en Mantenimiento' : undefined}
+                                    onClick={() => setPaymentMethod('qr')}
+                                >
+                                    <QrCode size={15} /> QR dinámico
+                                </button>
+                            </div>
+                        </div>
                     </div>
+                )}
+
+                <footer className={`multi-sale-qr-footer${isProductStep ? '' : ' multi-sale-qr-footer--payment'}`}>
                     <div className="multi-sale-qr-total">
-                        <span>Total</span>
+                        <span>Total de la venta · {items.length} {items.length === 1 ? 'producto' : 'productos'}</span>
                         <strong>{money(total)}</strong>
                     </div>
-                    <button
-                        type="button"
-                        className="primary multi-sale-qr-submit"
-                        onClick={prepareCharge}
-                        disabled={!paymentMethod || items.length === 0 || submitting || (paymentMethod === 'qr' && bankQr !== true)}
-                    >
-                        {paymentMethod === 'qr' ? <QrCode size={17} /> : null}
-                        {submitting
-                            ? 'Registrando…'
-                            : paymentMethod === 'qr'
-                                ? `Generar QR por ${money(total)}`
-                                : paymentMethod === 'cash'
-                                    ? `Registrar efectivo por ${money(total)}`
-                                    : 'Elige el método de pago'}
-                    </button>
+                    {isProductStep ? (
+                        <button
+                            type="button"
+                            className="primary multi-sale-qr-submit"
+                            onClick={continueToPayment}
+                            disabled={items.length === 0}
+                        >
+                            Revisar y elegir pago
+                        </button>
+                    ) : (
+                        <div className="multi-sale-qr-payment-actions">
+                            <button type="button" className="multi-sale-qr-back" onClick={() => setStep('products')}>
+                                <ArrowLeft size={16} /> Volver al carrito
+                            </button>
+                            <button
+                                type="button"
+                                className="primary multi-sale-qr-submit"
+                                onClick={startPayment}
+                                disabled={!paymentMethod || submitting || (paymentMethod === 'qr' && bankQr !== true)}
+                            >
+                                {paymentMethod === 'qr' ? <QrCode size={17} /> : null}
+                                {submitting
+                                    ? 'Registrando…'
+                                    : paymentMethod === 'qr'
+                                        ? `Generar QR por ${money(total)}`
+                                        : paymentMethod === 'cash'
+                                            ? `Registrar venta por ${money(total)}`
+                                            : 'Elige efectivo o QR'}
+                            </button>
+                        </div>
+                    )}
                 </footer>
             </section>
-            {confirming && (
-                <ConfirmDialog
-                    message={paymentMethod === 'qr'
-                        ? `¿Generar un único QR por ${money(total)}? Al confirmarse el pago, cada producto se registrará por separado y se descontará su stock.`
-                        : `¿Registrar la venta en efectivo por ${money(total)}? Cada producto quedará como una fila separada y se descontará su stock.`}
-                    onConfirm={confirmSale}
-                    onCancel={() => setConfirming(false)}
-                    danger={false}
-                />
-            )}
         </div>
     );
 }

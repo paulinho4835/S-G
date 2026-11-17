@@ -1,17 +1,17 @@
 # Graph Report - Felipillo  (2026-11-17)
 
 ## Corpus Check
-- 105 files · ~124,868 words
+- 105 files · ~124,981 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 18 file(s) not represented in the graph (top: (none) 14, .css 2, .code-workspace 1)
 
 ## Summary
-- 820 nodes · 1339 edges · 61 communities (51 shown, 10 thin omitted)
+- 820 nodes · 1323 edges · 62 communities (52 shown, 10 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 10 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `65d32831`
+- Built from commit: `02d84982`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -72,20 +72,21 @@
 - 001_schema.sql
 - mobile/AGENTS.md
 - public.fn_delete_sale
-- PartList
+- qr_payments
 - 20261015150000_supply_orders_lifecycle.sql
+- QuotationsList
 
 ## God Nodes (most connected - your core abstractions)
-1. `ConfirmDialog()` - 23 edges
+1. `ConfirmDialog()` - 20 edges
 2. `parts` - 18 edges
 3. `App()` - 17 edges
 4. `Dashboard()` - 17 edges
 5. `lucide-react` - 16 edges
-6. `sales` - 14 edges
-7. `PartList()` - 14 edges
-8. `OrdersList()` - 14 edges
-9. `toast` - 14 edges
-10. `Web Migration: Electron → Vercel + Supabase Implementation Plan` - 14 edges
+6. `OrdersList()` - 14 edges
+7. `toast` - 14 edges
+8. `Web Migration: Electron → Vercel + Supabase Implementation Plan` - 14 edges
+9. `sales` - 14 edges
+10. `BankQrSettings()` - 12 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Task 10: Configurar URL del PDF en Edge Function` --references--> `downloadQuotationPdf()`  [INFERRED]
@@ -102,11 +103,11 @@
 ## Import Cycles
 - None detected.
 
-## Communities (61 total, 10 thin omitted)
+## Communities (62 total, 10 thin omitted)
 
 ### Community 0 - "App.jsx"
-Cohesion: 0.08
-Nodes (45): App(), BulkUpload, Dashboard, DatabaseMaintenance, isAdminSession(), NAV_ITEMS, OrdersList, PartForm (+37 more)
+Cohesion: 0.07
+Nodes (47): App(), BulkUpload, Dashboard, DatabaseMaintenance, isAdminSession(), NAV_ITEMS, OrdersList, PartForm (+39 more)
 
 ### Community 1 - "package.json"
 Cohesion: 0.11
@@ -121,8 +122,8 @@ Cohesion: 0.05
 Nodes (49): json(), login(), mockSupabase(), TEST_PART, dependencies, lucide-react@^1.16.0, react@^18.2.0, react-dom@^18.2.0 (+41 more)
 
 ### Community 4 - "api.js"
-Cohesion: 0.15
-Nodes (15): PartForm(), SalesHistory(), archiveSupplyOrder(), createPart(), deleteSale(), deleteSupplyOrder(), getDeadStock(), getSales() (+7 more)
+Cohesion: 0.11
+Nodes (16): PartForm(), SalesHistory(), archiveSupplyOrder(), createPart(), deleteSale(), deleteSupplyOrder(), getDeadStock(), getParts() (+8 more)
 
 ### Community 5 - "bank-qr/index.ts"
 Cohesion: 0.08
@@ -161,8 +162,8 @@ Cohesion: 0.05
 Nodes (42): App(), styles, dependencies, expo@~56.0.4, expo-document-picker@~56.0.4, expo-file-system@~56.0.7, expo-sqlite@~56.0.4, expo-status-bar@~56.0.4 (+34 more)
 
 ### Community 14 - "Web Migration: Electron → Vercel + Supabase Implementation Plan"
-Cohesion: 0.13
-Nodes (14): Archivos que se crean o modifican, Prerequisitos manuales (antes de empezar), Resumen de la arquitectura final, Task 10: Configurar URL del PDF en Edge Function, Task 1: PostgreSQL Schema, Task 2: Supabase Auth + RLS, Task 3: Stored Procedures (RPCs) para lógica transaccional, Task 4: Edge Function para generación de PDF (+6 more)
+Cohesion: 0.15
+Nodes (12): Archivos que se crean o modifican, Prerequisitos manuales (antes de empezar), Resumen de la arquitectura final, Task 1: PostgreSQL Schema, Task 2: Supabase Auth + RLS, Task 3: Stored Procedures (RPCs) para lógica transaccional, Task 4: Edge Function para generación de PDF, Task 5: Frontend — Cliente Supabase + api.js (+4 more)
 
 ### Community 15 - "check_db_internal.js"
 Cohesion: 0.23
@@ -205,8 +206,8 @@ Cohesion: 0.20
 Nodes (9): 🚀 Archivos Generados en `dist_electron/`, 📊 Carga Masiva desde Excel (Offline), 📦 Guía de Distribución e Instalación - La Casa de los Retenes S&G, 🎨 Identidad Visual y Marca Premium, 📥 Instrucciones para Instalar en otra Máquina, Paso 1: Copiar el instalador, Paso 2: Ejecutar el Instalador, Paso 3: ¡Listo para Usar! (+1 more)
 
 ### Community 25 - "QuotationsList"
-Cohesion: 0.20
-Nodes (10): Task 7: Actualizar componentes para usar api.js, QuotationsList(), WholesaleHistory(), cancelQuotation(), confirmQuotation(), getQuotation(), getQuotations(), getWholesaleOrder() (+2 more)
+Cohesion: 0.33
+Nodes (6): Task 7: Actualizar componentes para usar api.js, WholesaleHistory(), getQuotations(), getWholesaleOrder(), getWholesaleOrders(), returnWholesaleOrder()
 
 ### Community 26 - "scripts"
 Cohesion: 0.22
@@ -293,20 +294,24 @@ Cohesion: 0.33
 Nodes (5): 🛠️ Arquitectura Técnica, 🚀 Felipillo - Estado del Proyecto, ✅ Funcionalidades Implementadas, 📌 Resumen Actual, 📍 Última Tarea (Donde nos quedamos)
 
 ### Community 53 - "001_schema.sql"
-Cohesion: 0.08
-Nodes (37): idx_movements_part, idx_parts_codigo, idx_parts_codigo_producto, idx_parts_measures, idx_parts_name, idx_quotation_items_q, idx_quotations_cliente, idx_sales_date (+29 more)
+Cohesion: 0.12
+Nodes (28): idx_movements_part, idx_parts_codigo, idx_parts_codigo_producto, idx_parts_measures, idx_parts_name, idx_quotation_items_q, idx_quotations_cliente, idx_sales_date (+20 more)
 
 ### Community 56 - "public.fn_delete_sale"
 Cohesion: 0.12
 Nodes (12): idx_audit_log_created_at, idx_audit_log_entity, public.audit_log, public.fn_delete_part(), public.fn_delete_sale(), public.fn_require_admin(), public.fn_reset_database(), public.fn_update_sale_invoice_type() (+4 more)
 
-### Community 57 - "PartList"
-Cohesion: 0.29
-Nodes (7): EditPartModal(), PartList(), createSale(), deletePart(), getParts(), restock(), updatePart()
+### Community 57 - "qr_payments"
+Cohesion: 0.24
+Nodes (9): fn_register_qr_payment(), get_payment_provider(), payment_providers, qr_payments, qr_payments_created_idx, qr_payments_provider_qr_idx, idx_supply_orders_order_date, idx_supply_orders_part_id (+1 more)
 
 ### Community 58 - "20261015150000_supply_orders_lifecycle.sql"
 Cohesion: 0.48
 Nodes (5): idx_supply_orders_active_date, idx_supply_orders_status, idx_supply_orders_supplier, public.fn_touch_supply_order(), trg_supply_orders_updated_at
+
+### Community 61 - "QuotationsList"
+Cohesion: 0.33
+Nodes (6): Task 10: Configurar URL del PDF en Edge Function, QuotationsList(), cancelQuotation(), confirmQuotation(), downloadQuotationPdf(), getQuotation()
 
 ## Knowledge Gaps
 - **10 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
@@ -314,15 +319,15 @@ Nodes (5): idx_supply_orders_active_date, idx_supply_orders_status, idx_supply_o
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `exportPartsExcel()` connect `ref_path` to `PartList`, `api.js`?**
-  _High betweenness centrality (0.048) - this node is a cross-community bridge._
+- **Why does `bulkUploadParts()` connect `ref_path` to `App.jsx`, `api.js`?**
+  _High betweenness centrality (0.046) - this node is a cross-community bridge._
 - **Should `App.jsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.07531531531531531 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07177033492822966 - nodes in this community are weakly interconnected._
 - **Why does `electron-is-dev` connect `main.js` to `package.json`?**
   _High betweenness centrality (0.042) - this node is a cross-community bridge._
 - **Should `package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.11462450592885376 - nodes in this community are weakly interconnected._
-- **Why does `bulkUploadParts()` connect `ref_path` to `App.jsx`, `api.js`?**
+- **Why does `exportPartsExcel()` connect `ref_path` to `api.js`?**
   _High betweenness centrality (0.041) - this node is a cross-community bridge._
 - **Should `project.yml` be split into smaller, more focused modules?**
   _Cohesion score 0.07692307692307693 - nodes in this community are weakly interconnected._

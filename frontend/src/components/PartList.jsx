@@ -363,7 +363,7 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                                 type="button"
                                 onClick={() => setMultiSaleQrOpen(true)}
                                 style={{ ...btnBase, backgroundColor: 'var(--accent-dim)', color: 'var(--accent-color)', border: '1px solid var(--accent-color)' }}
-                                title="Arma el carrito y elige efectivo o QR al cobrar"
+                                title="Agrega productos al carrito y después elige efectivo o QR"
                             >
                                 <ShoppingCart size={14} /> Venta múltiple
                             </button>
