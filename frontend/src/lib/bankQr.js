@@ -49,8 +49,8 @@ export const setBankQrEnabled = (enabled) => bankQr('set-enabled', { enabled });
 export const removeBankQr = () => bankQr('remove');
 
 /**
- * Pide el QR al banco. `charge` es { kind: 'sale' | 'wholesale', payload } para una venta (el servidor
- * calcula el monto y registra la venta al confirmarse el pago) o { amount } para un cobro de prueba.
+ * Pide el QR al banco. `charge` es { kind: 'sale' | 'sale_cart' | 'wholesale', payload } para una venta
+ * (el servidor calcula el monto y registra el detalle al confirmarse el pago) o { amount } para un cobro de prueba.
  */
 export const generateBankQr = (charge) => bankQr('generate', charge);
 

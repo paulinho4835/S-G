@@ -83,7 +83,9 @@ export default function BankQrCheckout({ charge, onRegistered, onCancelled, onCl
                 {registered ? (
                     <>
                         <p style={{ color: '#4ade80', margin: '0.75rem 0' }}>
-                            {payment.wholesale_order_id
+                            {payment.kind === 'sale_cart'
+                                ? `${payment.description || 'Venta con varios productos'} registrada en el historial.`
+                                : payment.wholesale_order_id
                                 ? `Venta por mayor #${payment.wholesale_order_id} registrada.`
                                 : `Venta #${payment.sale_id} registrada.`}
                         </p>

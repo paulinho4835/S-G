@@ -915,3 +915,284 @@ tbody tr:hover {
     padding: 0.85rem 0.6rem;
   }
 }
+
+/* Venta con un solo QR y varias líneas de inventario. */
+.multi-sale-qr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(3, 8, 15, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.multi-sale-qr-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(860px, 100%);
+  max-height: min(92dvh, 900px);
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(212, 144, 10, 0.35);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.6);
+}
+
+.multi-sale-qr-header,
+.multi-sale-qr-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.35rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.multi-sale-qr-eyebrow {
+  color: var(--accent-color);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.multi-sale-qr-header h2 {
+  margin: 0.2rem 0 0;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+}
+
+.multi-sale-qr-close,
+.multi-sale-qr-item > button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.multi-sale-qr-body {
+  overflow-y: auto;
+  padding: 1.15rem 1.35rem;
+}
+
+.multi-sale-qr-label,
+.multi-sale-qr-item label {
+  display: block;
+  margin: 0 0 0.45rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.multi-sale-qr-search {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: rgba(4, 12, 23, 0.55);
+  color: var(--accent-color);
+}
+
+.multi-sale-qr-search:focus-within {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(212, 144, 10, 0.12);
+}
+
+.multi-sale-qr-search input,
+.multi-sale-qr-item input,
+.multi-sale-qr-body > select {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.multi-sale-qr-search input {
+  padding: 0.75rem 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+
+.multi-sale-qr-results {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 0.45rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.multi-sale-qr-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent-color);
+  text-align: left;
+  cursor: pointer;
+}
+
+.multi-sale-qr-result:hover:not(:disabled) {
+  border-color: rgba(212, 144, 10, 0.25);
+  background: rgba(212, 144, 10, 0.08);
+}
+
+.multi-sale-qr-result:disabled { opacity: 0.42; cursor: not-allowed; }
+
+.multi-sale-qr-result span,
+.multi-sale-qr-item-title {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.multi-sale-qr-result strong,
+.multi-sale-qr-item-title strong {
+  overflow: hidden;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-sale-qr-result small,
+.multi-sale-qr-item-title small,
+.multi-sale-qr-muted {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.multi-sale-qr-cart-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0.6rem;
+}
+
+.multi-sale-qr-cart-heading h3 { margin: 0; color: var(--text-primary); font-size: 0.95rem; }
+.multi-sale-qr-cart-heading span { color: var(--text-secondary); font-size: 0.75rem; }
+
+.multi-sale-qr-empty,
+.multi-sale-qr-notice {
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 10px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.multi-sale-qr-notice {
+  margin-bottom: 1rem;
+  border-style: solid;
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(120, 53, 15, 0.18);
+  color: #fbbf24;
+}
+
+.multi-sale-qr-items { display: grid; gap: 0.55rem; margin-bottom: 1.15rem; }
+
+.multi-sale-qr-item {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.4fr) minmax(80px, 0.55fr) minmax(125px, 0.85fr) auto 38px;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: rgba(4, 12, 23, 0.36);
+}
+
+.multi-sale-qr-item label { margin: 0; }
+.multi-sale-qr-item label span { display: block; margin-bottom: 0.3rem; font-size: 0.68rem; }
+.multi-sale-qr-item input { padding: 0.52rem 0.55rem; font-size: 0.84rem; }
+.multi-sale-qr-item input.is-invalid { border-color: #ef4444; color: #fca5a5; }
+.multi-sale-qr-subtotal { color: #34d399; white-space: nowrap; }
+.multi-sale-qr-body > select { padding: 0.7rem 0.75rem; }
+
+.multi-sale-qr-footer {
+  border-top: 1px solid var(--border-color);
+  border-bottom: 0;
+  background: rgba(4, 12, 23, 0.42);
+}
+
+.multi-sale-qr-methods { display: grid; gap: 0.4rem; }
+.multi-sale-qr-methods > span { color: var(--text-secondary); font-size: 0.75rem; }
+.multi-sale-qr-methods > div { display: flex; gap: 0.4rem; }
+
+.multi-sale-pay-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.multi-sale-pay-option.active {
+  border-color: var(--accent-color);
+  background: var(--accent-dim);
+  color: var(--accent-color);
+}
+
+.multi-sale-pay-option:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.multi-sale-qr-total { display: grid; gap: 0.15rem; }
+.multi-sale-qr-total span { color: var(--text-secondary); font-size: 0.75rem; }
+.multi-sale-qr-total strong { color: #34d399; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+
+.multi-sale-qr-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 44px;
+}
+
+.multi-sale-qr-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+
+@media (max-width: 680px) {
+  .multi-sale-qr-overlay { padding: 0.4rem; }
+  .multi-sale-qr-panel { max-height: 96dvh; border-radius: 14px; }
+  .multi-sale-qr-header,
+  .multi-sale-qr-footer { padding: 0.85rem; }
+  .multi-sale-qr-body { padding: 0.9rem 0.85rem; }
+  .multi-sale-qr-item {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 38px;
+    gap: 0.55rem;
+  }
+  .multi-sale-qr-item-title { grid-column: 1 / 3; grid-row: 1; }
+  .multi-sale-qr-item label:nth-of-type(1) { grid-column: 1; grid-row: 2; }
+  .multi-sale-qr-item label:nth-of-type(2) { grid-column: 2; grid-row: 2; }
+  .multi-sale-qr-subtotal { grid-column: 1 / 3; grid-row: 3; text-align: right; }
+  .multi-sale-qr-item > button { grid-column: 3; grid-row: 1 / span 3; }
+  .multi-sale-qr-footer { align-items: stretch; flex-direction: column; }
+  .multi-sale-qr-total { display: flex; align-items: baseline; justify-content: space-between; }
+  .multi-sale-qr-methods > div { display: grid; grid-template-columns: 1fr 1fr; }
+  .multi-sale-qr-submit { width: 100%; }
+}

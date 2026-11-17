@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import * as api from '../lib/api';
 import SalesModal from './SalesModal';
+import MultiSaleQrModal from './MultiSaleQrModal';
 import EditPartModal from './EditPartModal';
 import AdjustStockModal from './AdjustStockModal';
 import KardexModal from './KardexModal';
@@ -22,6 +23,7 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [filters, setFilters] = useState({ internal: '', external: '', height: '' });
     const [selectedPartForSale, setSelectedPartForSale] = useState(null);
+    const [multiSaleQrOpen, setMultiSaleQrOpen] = useState(false);
     const [selectedPartForEdit, setSelectedPartForEdit] = useState(null);
     const [selectedPartForRestock, setSelectedPartForRestock] = useState(null);
     const [selectedPartForKardex, setSelectedPartForKardex] = useState(null);
@@ -356,6 +358,16 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                             <Download size={14} />
                             Excel
                         </button>
+                        {!wholesaleMode && (
+                            <button
+                                type="button"
+                                onClick={() => setMultiSaleQrOpen(true)}
+                                style={{ ...btnBase, backgroundColor: 'var(--accent-dim)', color: 'var(--accent-color)', border: '1px solid var(--accent-color)' }}
+                                title="Arma el carrito y elige efectivo o QR al cobrar"
+                            >
+                                <ShoppingCart size={14} /> Venta múltiple
+                            </button>
+                        )}
                     </div>
 
                     {/* Toggle Modo Mayorista */}
@@ -462,6 +474,18 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                     onConfirm={handleConfirmSale}
                     onQrRegistered={() => {
                         toast.success('Pago QR recibido y venta registrada');
+                        fetchParts();
+                    }}
+                />
+            )}
+            {multiSaleQrOpen && (
+                <MultiSaleQrModal
+                    parts={parts}
+                    onClose={() => setMultiSaleQrOpen(false)}
+                    onRegistered={(payment) => {
+                        toast.success(payment?.method === 'cash'
+                            ? 'Venta en efectivo registrada; cada producto quedó por separado en Ventas.'
+                            : 'Pago QR recibido; cada producto quedó por separado en Ventas.');
                         fetchParts();
                     }}
                 />

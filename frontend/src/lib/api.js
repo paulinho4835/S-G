@@ -235,7 +235,7 @@ export async function getUnregisteredQrPayments() {
         .from('qr_payments')
         .select('id,kind,amount,currency,description,paid_at,created_at,register_error')
         .eq('status', 'paid')
-        .in('kind', ['sale', 'wholesale'])
+        .in('kind', ['sale', 'sale_cart', 'wholesale'])
         .is('registered_at', null)
         .order('paid_at', { ascending: false })
         .limit(50);
@@ -255,6 +255,19 @@ export async function createSale({ part_id, quantity, unit_price, invoice_type }
         p_quantity:     quantity,
         p_unit_price:   parseFloat(unit_price) || 0,
         p_invoice_type: invoice_type || 'SIN_FACTURA',
+    });
+    if (error) throw new Error(error.message);
+    return { message: 'success', data };
+}
+
+export async function createMultiSale({ items, invoice_type }) {
+    const { data, error } = await supabase.rpc('fn_create_multi_sale', {
+        p_items: items.map((item) => ({
+            part_id: Number(item.part_id),
+            quantity: Number(item.quantity),
+            unit_price: Number(item.unit_price),
+        })),
+        p_invoice_type: invoice_type,
     });
     if (error) throw new Error(error.message);
     return { message: 'success', data };

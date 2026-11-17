@@ -67,9 +67,11 @@ function SalesHistory({ isAdmin = false }) {
             if (!payment?.registered_at) {
                 throw new Error(payment?.register_error || 'La venta todavía no pudo registrarse.');
             }
-            toast.success(payment.wholesale_order_id
-                ? `Pago QR registrado como venta mayorista #${payment.wholesale_order_id}.`
-                : `Pago QR registrado como venta #${payment.sale_id}.`);
+            toast.success(payment.kind === 'sale_cart'
+                ? `${payment.description || 'Venta con varios productos'} registrada en el historial.`
+                : payment.wholesale_order_id
+                    ? `Pago QR registrado como venta mayorista #${payment.wholesale_order_id}.`
+                    : `Pago QR registrado como venta #${payment.sale_id}.`);
             await Promise.all([fetchSales(), fetchUnregisteredQrPayments()]);
         } catch (err) {
             toast.error('No se pudo registrar el pago QR. Revisa el detalle en la sección de pagos pendientes.');

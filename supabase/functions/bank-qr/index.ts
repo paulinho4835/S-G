@@ -182,7 +182,7 @@ type Line = { part_id: number; quantity: number; unit_price: number };
 /** Comprueba que cada producto existe y tiene stock antes de cobrar; devuelve los códigos para la glosa. */
 async function checkStock(admin: SupabaseClient, lines: Line[]) {
   const ids = [...new Set(lines.map((line) => line.part_id))];
-  const { data, error } = await admin.from("parts").select("id,stock,codigo_producto,name").in("id", ids);
+  const { data, error } = await admin.from("parts").select("id,stock,cost_price,codigo_producto,name").in("id", ids);
   if (error) throw error;
   const parts = new Map((data ?? []).map((part) => [Number(part.id), part]));
   const wanted = new Map<number, number>();
@@ -218,6 +218,38 @@ async function chargeFor(admin: SupabaseClient, body: Record<string, unknown>) {
       payload: { ...line, invoice_type: invoiceType },
       amount: bankAmount(line.quantity * line.unit_price),
       description: text(`Venta ${line.quantity} x ${part.codigo_producto || part.name}`, 120),
+    };
+  }
+
+  if (kind === "sale_cart") {
+    const items = Array.isArray(raw.items) ? raw.items : [];
+    if (items.length === 0 || items.length > 300) throw new UserError("La venta no tiene productos válidos.");
+    const lines = items.map((item) => {
+      const value = (item ?? {}) as Record<string, unknown>;
+      return {
+        part_id: positiveInt(value.part_id, "Producto"),
+        quantity: positiveInt(value.quantity, "Cantidad"),
+        unit_price: price(value.unit_price),
+      };
+    });
+    const invoiceType = String(raw.invoice_type ?? "");
+    if (!SALE_INVOICE_TYPES.includes(invoiceType)) throw new UserError("Tipo de venta inválido para cobro QR.");
+    const parts = await checkStock(admin, lines);
+
+    for (const line of lines) {
+      const part = parts.get(line.part_id)!;
+      const costPrice = Number(part.cost_price || 0);
+      if (costPrice > 0 && line.unit_price < costPrice) {
+        throw new UserError(`"${part.codigo_producto || part.name}" no puede venderse bajo su costo base.`);
+      }
+    }
+
+    const total = lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
+    return {
+      kind,
+      payload: { items: lines, invoice_type: invoiceType },
+      amount: bankAmount(total),
+      description: text(`Venta QR - ${lines.length} producto(s)`, 120),
     };
   }
 
