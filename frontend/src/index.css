@@ -220,6 +220,101 @@ code {
   gap: 0.6rem;
 }
 
+.pwa-install-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 34px;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--accent-color);
+  border-radius: var(--radius-md);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--accent-color);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pwa-install-button:hover {
+  background: rgba(16, 185, 129, 0.2);
+}
+
+.pwa-install-button:focus-visible,
+.pwa-install-close:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.pwa-install-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 600000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(3, 8, 16, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.pwa-install-dialog {
+  position: relative;
+  width: min(100%, 390px);
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--surface-3);
+  color: var(--text-primary);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.pwa-install-dialog h2 {
+  margin: 0 2rem 0.75rem 0;
+  font-size: 1.2rem;
+}
+
+.pwa-install-dialog p {
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.pwa-install-dialog strong {
+  color: var(--text-primary);
+}
+
+.pwa-install-dialog .pwa-install-note {
+  margin-bottom: 0;
+  font-size: 0.86rem;
+}
+
+.pwa-install-dialog-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 1rem;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent-color);
+}
+
+.pwa-install-close {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
 /* Botón hamburguesa: oculto en escritorio, visible en móvil */
 .nav-toggle {
   display: none;
@@ -726,6 +821,12 @@ tbody tr:hover {
   .btn-logout {
     flex-shrink: 0;
     padding: 0.3rem 0.6rem;
+  }
+
+  .pwa-install-button {
+    flex-shrink: 0;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.72rem;
   }
 
   /* Hamburguesa visible; el nav se vuelve menú desplegable vertical */

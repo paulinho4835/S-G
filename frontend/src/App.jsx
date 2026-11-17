@@ -8,6 +8,7 @@ import Login from './components/Login';
 import WholesaleCart from './components/WholesaleCart';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
+import InstallAppButton from './components/InstallAppButton';
 import { toast } from './lib/toast';
 import { supabase } from './lib/supabase';
 
@@ -181,6 +182,7 @@ function App() {
                         <h1>La casa de los retenes S&amp;G</h1>
                     </div>
                     <div className="app-header-actions">
+                        <InstallAppButton />
                         <button
                             className="nav-toggle"
                             onClick={() => setMenuOpen(o => !o)}
