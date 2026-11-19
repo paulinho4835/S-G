@@ -176,8 +176,10 @@ const styles = {
     overlay: {
         position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.75)',
         display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000,
+        backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+        padding: '1rem', boxSizing: 'border-box',
     },
-    panel: { width: '380px', maxWidth: '92%' },
+    panel: { width: '380px', maxWidth: '100%', maxHeight: 'calc(100dvh - 2rem)', overflowY: 'auto' },
     center: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' },
     qr: { width: '260px', maxWidth: '100%', background: '#fff', padding: '8px', borderRadius: '8px' },
     amount: { fontSize: '1.6rem', color: 'var(--accent-color)' },
