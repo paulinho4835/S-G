@@ -6,12 +6,14 @@ import {
 import * as api from '../lib/api';
 import SalesModal from './SalesModal';
 import MultiSaleQrModal from './MultiSaleQrModal';
+import ExcelPasswordModal from './ExcelPasswordModal';
 import EditPartModal from './EditPartModal';
 import AdjustStockModal from './AdjustStockModal';
 import KardexModal from './KardexModal';
 import ConfirmDialog from './ConfirmDialog';
 import { SkeletonTable } from './Skeleton';
 import { toast } from '../lib/toast';
+import { supabase } from '../lib/supabase';
 
 
 export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeFromProp, setWholesaleMode: setWholesaleModeFromProp, onAddToWholesaleCart }) {
@@ -23,6 +25,7 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [filters, setFilters] = useState({ internal: '', external: '', height: '' });
     const [selectedPartForSale, setSelectedPartForSale] = useState(null);
+    const [excelPasswordOpen, setExcelPasswordOpen] = useState(false);
     const [multiSaleQrOpen, setMultiSaleQrOpen] = useState(false);
     const [multiSaleItems, setMultiSaleItems] = useState([]);
     const [selectedPartForEdit, setSelectedPartForEdit] = useState(null);
@@ -304,7 +307,34 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
 
     const handleFilterChange = (e) => setFilters({ ...filters, [e.target.name]: e.target.value });
 
-    const handleDownloadExcel = () => api.exportPartsExcel(parts);
+    const handleDownloadExcel = () => setExcelPasswordOpen(true);
+
+    const handleVerifyPasswordAndExport = async (password) => {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user?.email || !user.id) {
+            throw new Error('No se pudo identificar tu cuenta. Vuelve a iniciar sesión.');
+        }
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: user.email,
+            password,
+        });
+        if (error) {
+            throw new Error(error.status === 400 || error.status === 401
+                ? 'La contraseña de la cuenta es incorrecta.'
+                : 'No se pudo verificar la contraseña. Revisa tu conexión.');
+        }
+        if (data.user?.id !== user.id) {
+            throw new Error('No se pudo confirmar la cuenta activa. Vuelve a iniciar sesión.');
+        }
+
+        try {
+            await api.exportPartsExcel(parts);
+        } catch (error) {
+            console.error('Error exporting products to Excel:', error);
+            throw new Error('La contraseña se verificó, pero no se pudo generar el Excel.');
+        }
+    };
 
     const handleReset = () => {
         setSearch('');
@@ -485,6 +515,12 @@ export default function PartList({ refreshTrigger, wholesaleMode: wholesaleModeF
                 </div>
             )}
 
+            {excelPasswordOpen && (
+                <ExcelPasswordModal
+                    onConfirm={handleVerifyPasswordAndExport}
+                    onClose={() => setExcelPasswordOpen(false)}
+                />
+            )}
             {confirmModal && (
                 <ConfirmDialog
                     message={confirmModal.message}

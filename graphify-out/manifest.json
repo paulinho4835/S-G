@@ -228,9 +228,9 @@
     "semantic_hash": ""
   },
   "frontend/src/components/PartList.jsx": {
-    "mtime": 1794951894.7510085,
-    "seen": 1794951965.173504,
-    "ast_hash": "19f80e4425e8e91e77b52e14de8fb509",
+    "mtime": 1795046806.8190963,
+    "seen": 1795046855.2143764,
+    "ast_hash": "6aee368a6ad0651e10b89b096d8d674e",
     "semantic_hash": ""
   },
   "frontend/src/components/QuotationsList.jsx": {
@@ -783,6 +783,12 @@
     "mtime": 1795046352.8507836,
     "seen": 1795046399.829716,
     "ast_hash": "c9e4e3fa9e1fc96a60299cace3fcc412",
+    "semantic_hash": ""
+  },
+  "frontend/src/components/ExcelPasswordModal.jsx": {
+    "mtime": 1795046773.771383,
+    "seen": 1795046855.2143764,
+    "ast_hash": "dfdad489ddcfff98e43c1e0e0c6124db",
     "semantic_hash": ""
   },
   "backend/package-lock.json": {
