@@ -58,6 +58,7 @@ const PUBLIC_PAYMENT_FIELDS =
 
 const SALE_INVOICE_TYPES = ["SIN_FACTURA_QR", "FACTURA_QR"];
 const WHOLESALE_INVOICE_TYPES = ["MAYOR_SIN_FACTURA_QR", "MAYOR_FACTURA_QR"];
+const SALE_QR_DESCRIPTION = "RTN - DESGLOSADO";
 
 function baseUrl(environment: string) {
   if (environment === "production") return Deno.env.get("BANECO_PRODUCTION_URL") ?? BANECO_PRODUCTION_URL;
@@ -217,7 +218,7 @@ async function chargeFor(admin: SupabaseClient, body: Record<string, unknown>) {
       kind,
       payload: { ...line, invoice_type: invoiceType },
       amount: bankAmount(line.quantity * line.unit_price),
-      description: text(`Venta ${line.quantity} x ${part.codigo_producto || part.name}`, 120),
+      description: SALE_QR_DESCRIPTION,
     };
   }
 
@@ -249,7 +250,7 @@ async function chargeFor(admin: SupabaseClient, body: Record<string, unknown>) {
       kind,
       payload: { items: lines, invoice_type: invoiceType },
       amount: bankAmount(total),
-      description: text(`Venta QR - ${lines.length} producto(s)`, 120),
+      description: SALE_QR_DESCRIPTION,
     };
   }
 
@@ -274,7 +275,7 @@ async function chargeFor(admin: SupabaseClient, body: Record<string, unknown>) {
       kind,
       payload: { cliente, items: lines, invoice_type: invoiceType, notes: text(raw.notes, 500) },
       amount: bankAmount(total),
-      description: text(`Venta por mayor - ${cliente}`, 120),
+      description: SALE_QR_DESCRIPTION,
     };
   }
 
