@@ -1,17 +1,17 @@
-# Graph Report - Felipillo  (2026-11-17)
+# Graph Report - Felipillo  (2026-11-18)
 
 ## Corpus Check
-- 105 files · ~124,824 words
+- 106 files · ~124,974 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 18 file(s) not represented in the graph (top: (none) 14, .css 2, .code-workspace 1)
 
 ## Summary
-- 820 nodes · 1323 edges · 62 communities (52 shown, 10 thin omitted)
+- 822 nodes · 1323 edges · 64 communities (52 shown, 12 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 10 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3a793793`
+- Built from commit: `f817c620`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -89,21 +89,21 @@
 10. `BankQrSettings()` - 12 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Task 7: Actualizar componentes para usar api.js` --references--> `getQuotations()`  [INFERRED]
-  docs/superpowers/plans/2026-05-25-web-migration-vercel-supabase.md → frontend/src/lib/api.js
 - `Task 7: Actualizar componentes para usar api.js` --references--> `getWholesaleOrders()`  [INFERRED]
+  docs/superpowers/plans/2026-05-25-web-migration-vercel-supabase.md → frontend/src/lib/api.js
+- `Task 7: Actualizar componentes para usar api.js` --references--> `getQuotations()`  [INFERRED]
   docs/superpowers/plans/2026-05-25-web-migration-vercel-supabase.md → frontend/src/lib/api.js
 - `Task 10: Configurar URL del PDF en Edge Function` --references--> `downloadQuotationPdf()`  [INFERRED]
   docs/superpowers/plans/2026-05-25-web-migration-vercel-supabase.md → frontend/src/lib/api.js
-- `Dashboard()` --calls--> `getDeadStock()`  [EXTRACTED]
-  frontend/src/components/Dashboard.jsx → frontend/src/lib/api.js
 - `Dashboard()` --calls--> `getParts()`  [EXTRACTED]
+  frontend/src/components/Dashboard.jsx → frontend/src/lib/api.js
+- `Dashboard()` --calls--> `getSalesSummary()`  [EXTRACTED]
   frontend/src/components/Dashboard.jsx → frontend/src/lib/api.js
 
 ## Import Cycles
 - None detected.
 
-## Communities (62 total, 10 thin omitted)
+## Communities (64 total, 12 thin omitted)
 
 ### Community 0 - "App.jsx"
 Cohesion: 0.07
@@ -314,13 +314,13 @@ Cohesion: 0.33
 Nodes (6): Task 10: Configurar URL del PDF en Edge Function, QuotationsList(), cancelQuotation(), confirmQuotation(), downloadQuotationPdf(), getQuotation()
 
 ## Knowledge Gaps
-- **10 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **12 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `bulkUploadParts()` connect `ref_path` to `App.jsx`, `api.js`?**
-  _High betweenness centrality (0.046) - this node is a cross-community bridge._
+  _High betweenness centrality (0.045) - this node is a cross-community bridge._
 - **Should `App.jsx` be split into smaller, more focused modules?**
   _Cohesion score 0.07177033492822966 - nodes in this community are weakly interconnected._
 - **Why does `electron-is-dev` connect `main.js` to `package.json`?**

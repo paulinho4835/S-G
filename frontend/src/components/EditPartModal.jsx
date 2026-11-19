@@ -9,6 +9,7 @@ export default function EditPartModal({ part, onClose, onConfirm }) {
         codigo: part.codigo || '',
         marca: part.marca || '',
         mundial: part.mundial || '',
+        supplier: part.supplier || '',
         internal_measure: part.internal_measure || 0,
         external_measure: part.external_measure || 0,
         height: part.height || 0,
@@ -89,6 +90,16 @@ export default function EditPartModal({ part, onClose, onConfirm }) {
                         <div>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Mundial</label>
                             <input name="mundial" value={formData.mundial} onChange={handleChange} />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Proveedor habitual (opcional)</label>
+                            <input
+                                name="supplier"
+                                value={formData.supplier}
+                                onChange={handleChange}
+                                placeholder="Nombre del proveedor"
+                                maxLength={120}
+                            />
                         </div>
                     </div>
 

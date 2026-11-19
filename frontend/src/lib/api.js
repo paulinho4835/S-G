@@ -77,6 +77,7 @@ export async function createPart(body) {
     const finalAplicacion = aplicacion || description || '';
     const { data, error } = await supabase.from('parts').insert({
         ...rest,
+        supplier: String(body.supplier ?? '').trim() || null,
         aplicacion: finalAplicacion,
         description: finalAplicacion,
         name: body.codigo_producto || '',
@@ -101,6 +102,9 @@ export async function updatePart(id, body) {
     const finalAplicacion = aplicacion || description || undefined;
     const { data, error } = await supabase.from('parts').update({
         ...rest,
+        ...(Object.prototype.hasOwnProperty.call(body, 'supplier') && {
+            supplier: String(body.supplier ?? '').trim() || null,
+        }),
         ...(finalAplicacion && { aplicacion: finalAplicacion, description: finalAplicacion }),
         ...(body.codigo_producto && { name: body.codigo_producto }),
     }).eq('id', id).select().single();

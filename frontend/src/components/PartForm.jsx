@@ -6,7 +6,7 @@ const EMPTY = {
     familia: '', codigo: '', codigo_producto: '', marca: '', mundial: '',
     internal_measure: '', external_measure: '', height: '',
     flange_measure: '', tope: '', stock: '',
-    aplicacion: '', cost_price: '', pv_geli: ''
+    aplicacion: '', cost_price: '', pv_geli: '', supplier: ''
 };
 
 export default function PartForm({ onPartAdded }) {
@@ -110,6 +110,17 @@ export default function PartForm({ onPartAdded }) {
                 <div>
                     <label style={labelStyle}>Mundial</label>
                     <input name="mundial" value={formData.mundial} onChange={handleChange} placeholder="Mundial" />
+                </div>
+
+                <div>
+                    <label style={labelStyle}>Proveedor habitual (opcional)</label>
+                    <input
+                        name="supplier"
+                        value={formData.supplier}
+                        onChange={handleChange}
+                        placeholder="Nombre del proveedor"
+                        maxLength={120}
+                    />
                 </div>
 
                 <div style={{ gridColumn: 'span 2' }}>

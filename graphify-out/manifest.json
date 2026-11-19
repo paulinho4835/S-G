@@ -150,9 +150,9 @@
     "semantic_hash": "c2b1df24e16c544bc4b00439c8bbdaea"
   },
   "frontend/src/components/BankQrCheckout.jsx": {
-    "mtime": 1794945131.5828052,
-    "seen": 1794950296.7385857,
-    "ast_hash": "a987b83f0473c86de1aef87c5ddfaaeb",
+    "mtime": 1795046062.8908143,
+    "seen": 1795046100.6569304,
+    "ast_hash": "400bd9f59b81c77d5fd0c185750ff5b9",
     "semantic_hash": ""
   },
   "frontend/src/components/BankQrSettings.jsx": {
@@ -186,10 +186,10 @@
     "semantic_hash": "f83e93cbc5944d42b150401334f26497"
   },
   "frontend/src/components/EditPartModal.jsx": {
-    "mtime": 1779983672.8969398,
-    "seen": 1792094986.2825556,
-    "ast_hash": "ad621dd5e432ac102ad1a737e072be69",
-    "semantic_hash": "ad621dd5e432ac102ad1a737e072be69"
+    "mtime": 1795046336.9829512,
+    "seen": 1795046399.829716,
+    "ast_hash": "b97905247afa4bcd4c93034ae278179e",
+    "semantic_hash": ""
   },
   "frontend/src/components/ErrorBoundary.jsx": {
     "mtime": 1791549733.789672,
@@ -222,10 +222,10 @@
     "semantic_hash": "546ac689352d3cbafc11f68d07ce5588"
   },
   "frontend/src/components/PartForm.jsx": {
-    "mtime": 1791549733.8072455,
-    "seen": 1792094986.2825556,
-    "ast_hash": "52879fd49c6148d6693799ac00698484",
-    "semantic_hash": "52879fd49c6148d6693799ac00698484"
+    "mtime": 1795046329.4325593,
+    "seen": 1795046399.829716,
+    "ast_hash": "84ab14ae5907722ffed3ec305cfae119",
+    "semantic_hash": ""
   },
   "frontend/src/components/PartList.jsx": {
     "mtime": 1794951894.7510085,
@@ -270,9 +270,9 @@
     "semantic_hash": "e2b1db19a12f06178c158ca0634194a2"
   },
   "frontend/src/lib/api.js": {
-    "mtime": 1794949535.338524,
-    "seen": 1794950296.7406347,
-    "ast_hash": "d33ab2844b27c9928069e65a82e6dae8",
+    "mtime": 1795046343.3020837,
+    "seen": 1795046399.829716,
+    "ast_hash": "0711afc12610b39cdfad0abac8a0d347",
     "semantic_hash": ""
   },
   "frontend/src/lib/bankQr.js": {
@@ -777,6 +777,12 @@
     "mtime": 1794949651.4148,
     "seen": 1794950366.9699917,
     "ast_hash": "957be4bcf8aecd357a28f07a43411cf0",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261118100000_parts_supplier.sql": {
+    "mtime": 1795046352.8507836,
+    "seen": 1795046399.829716,
+    "ast_hash": "c9e4e3fa9e1fc96a60299cace3fcc412",
     "semantic_hash": ""
   },
   "backend/package-lock.json": {
